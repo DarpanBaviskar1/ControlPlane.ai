@@ -1,0 +1,491 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Implement `ChatRequest`, `ChatResponse`, `UseCaseProfile`, and `RequestContext` models": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838324854
+      },
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838384523
+      }
+    ],
+    "1.2 Implement `TelemetryRecord` and `OverrideRecord` models with all required fields": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838325764
+      },
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838385469
+      }
+    ],
+    "2.1 Implement `PolicyLoader` with watchdog hot-reload and atomic swap": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838325855
+      }
+    ],
+    "2.2 Implement `get_profile()` returning a `UseCaseProfile` or raising for unknown names": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838325930
+      }
+    ],
+    "3.1 Implement request validation and 422 error responses": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326045
+      }
+    ],
+    "3.2 Implement UUID v4 `request_id` assignment and latency-budget timeout enforcement": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326121
+      }
+    ],
+    "3.3 Implement `RequestContext` creation and per-request state isolation": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326263
+      }
+    ],
+    "4. Checkpoint — ingress, policy, and data models": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326363
+      }
+    ],
+    "5.1 Implement `PIIMaskingEngine.mask()` and `discard_mapping()`": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326457
+      }
+    ],
+    "5.2 Implement `PIIMaskingEngine.unmask()` with byte-for-byte fidelity check": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326547
+      }
+    ],
+    "5.3 Implement `run_startup_validation()` and lifespan integration": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326624
+      }
+    ],
+    "6.1 Implement `p1_judge.py` — toxicity and injection verdicts": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326702
+      }
+    ],
+    "6.2 Implement `p2_judge.py` — PII detection and masking integration": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326799
+      }
+    ],
+    "6.3 Implement `p3_judge.py` — clarity classifier using tiktoken and spaCy": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326903
+      }
+    ],
+    "6.4 Implement `orchestrator.py` — concurrent judge execution with timeout and failure isolation": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838326986
+      }
+    ],
+    "6.5 Wire P1 BLOCK → pipeline short-circuit and P2 masking → `HARD_BLOCK` on masking failure": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327083
+      }
+    ],
+    "7. Checkpoint — Micro-Judge stage": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327181
+      }
+    ],
+    "8.1 Implement `route_and_call()` with RouteLLM complexity classification": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327293
+      }
+    ],
+    "8.2 Implement Portkey dispatch with fallback config for both model tiers": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327391
+      }
+    ],
+    "8.3 Implement fallback on both-tiers-failure → `HARD_BLOCK` + `MODEL_TIER_FAILURE` log": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327489
+      }
+    ],
+    "9.1 Implement `VectorStore` Protocol and FAISS adapter": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327588
+      }
+    ],
+    "9.2 Implement `audit()` with embedding similarity scorer and [0.0, 1.0] normalisation": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327676
+      }
+    ],
+    "9.3 Implement vector store unavailability fallback and `VECTOR_STORE_UNAVAILABLE` logging": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327763
+      }
+    ],
+    "10.1 Implement `evaluate()` with the four-state priority matrix": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327860
+      }
+    ],
+    "10.2 Implement `COMPRESS_AND_EDIT` compressor with named-entity containment check": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838327941
+      }
+    ],
+    "10.3 Implement `human_escalation_enabled=false` promotion and `groundedness_pass_threshold` override": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328020
+      }
+    ],
+    "11. Checkpoint — Router, Auditor, and Triage Gateway": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328104
+      }
+    ],
+    "12.1 Implement async queue writer with fire-and-forget enqueue and retry consumer": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328190
+      }
+    ],
+    "12.2 Implement `record()` writing all required `TelemetryRecord` fields": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328279
+      }
+    ],
+    "12.3 Implement rolling metrics aggregator and `get_metrics()` for `/v1/metrics`": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328360
+      }
+    ],
+    "13.1 Implement `GET /v1/metrics` with window validation and lazy aggregation": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328488
+      }
+    ],
+    "13.2 Implement `GET /v1/metrics/accuracy` with F1/FPR/FNR computation": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328573
+      }
+    ],
+    "14.1 Implement `POST /v1/feedback/override` with `OverrideRecord` persistence": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328656
+      }
+    ],
+    "14.2 Implement `GET /v1/feedback/export` returning escalated and overridden cases": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328746
+      }
+    ],
+    "14.3 Implement `RetentionManager` enforcing 90-day minimum retention": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328842
+      }
+    ],
+    "15.1 Implement the main pipeline coroutine and short-circuit logic": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838328931
+      }
+    ],
+    "15.2 Implement FastAPI `lifespan` startup sequence": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838329011
+      }
+    ],
+    "15.3 Ensure Telemetry Logger is called on every pipeline exit path": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838329112
+      }
+    ],
+    "16. Checkpoint — full pipeline integration": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838329218
+      }
+    ],
+    "17.1 Write end-to-end integration test for `customer_chatbot` and `internal_copilot` happy paths": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838329321
+      }
+    ],
+    "18. Final checkpoint — all tests pass": [
+      {
+        "executionId": "42fa6df8-e3eb-4407-a8b0-9817ee61d99c",
+        "chatSessionId": "sess_2499060b-3a2c-42fe-87c2-db38e1a518dc",
+        "timestamp": 1787838329409
+      }
+    ],
+    "1.3 Write property test for `UseCaseProfile` field validation": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838367752
+      }
+    ],
+    "2.3 Write property test for profile load correctness": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838367814
+      }
+    ],
+    "3.4 Write property test for invalid request rejection": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838367887
+      }
+    ],
+    "3.5 Write property test for latency budget enforcement": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838367951
+      }
+    ],
+    "3.6 Write property test for concurrent request isolation": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368014
+      }
+    ],
+    "5.4 Write property test for PII masking round-trip fidelity": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368084
+      }
+    ],
+    "5.5 Write property test for P2 PII token replacement": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368152
+      }
+    ],
+    "6.6 Write property test for P3 clarity classification rule": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368229
+      }
+    ],
+    "6.7 Write property test for P1 BLOCK halting the pipeline": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368318
+      }
+    ],
+    "6.8 Write property test for Micro-Judge stage telemetry completeness": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368369
+      }
+    ],
+    "8.4 Write property test for routing classification determinism": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368422
+      }
+    ],
+    "8.5 Write property test for router telemetry completeness": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368505
+      }
+    ],
+    "9.4 Write property test for groundedness score range": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368593
+      }
+    ],
+    "9.5 Write property test for low-groundedness signal emission": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368672
+      }
+    ],
+    "10.4 Write property test for triage decision matrix completeness and priority": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368766
+      }
+    ],
+    "10.5 Write property test for `human_escalation_enabled=false` promotion": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838368902
+      }
+    ],
+    "10.6 Write property test for custom groundedness threshold": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369007
+      }
+    ],
+    "12.4 Write property test for telemetry record structural completeness": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369077
+      }
+    ],
+    "12.5 Write property test for unique request IDs": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369162
+      }
+    ],
+    "12.6 Write property test for HARD_BLOCK telemetry blocking trigger": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369245
+      }
+    ],
+    "13.3 Write property test for metrics window validation": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369329
+      }
+    ],
+    "13.4 Write property test for accuracy metrics window validation": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369405
+      }
+    ],
+    "14.4 Write property test for override records required metadata": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369483
+      }
+    ],
+    "17.2 Write integration test for policy hot-reload within 5 seconds": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369562
+      }
+    ],
+    "17.3 Write integration test for routing distribution over 200 representative prompts": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369669
+      }
+    ],
+    "17.4 Write concurrent isolation test — 50 concurrent requests across two profiles": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369737
+      }
+    ],
+    "17.5 Write latency overhead test — 10 active profiles vs 1 profile": [
+      {
+        "executionId": "6f7a819f-554c-4a59-b11e-60b18b283412",
+        "chatSessionId": "sess_31e93f48-f9f3-49b0-b86c-d0a2e43eae06",
+        "timestamp": 1787838369806
+      }
+    ]
+  }
+}
