@@ -159,3 +159,6 @@ async def _safe_p3(prompt: str) -> str:
     except Exception as exc:
         logger.error("P3 judge raised unexpectedly: %s — defaulting AMBIGUOUS", exc)
         return "AMBIGUOUS"
+
+# Alias used by app/main.py
+run_orchestrator = run_micro_judges
