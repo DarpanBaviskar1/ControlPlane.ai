@@ -115,11 +115,23 @@ async def route_and_call(
         elif _is_real_key(settings.LLM_API_KEY):
             try:
                 import openai
-                client = openai.AsyncOpenAI(api_key=settings.LLM_API_KEY)
+                # Route to the correct OpenAI-compatible endpoint per provider
+                _PROVIDER_BASE_URLS = {
+                    "google":    "https://generativelanguage.googleapis.com/v1beta/openai/",
+                    "anthropic": "https://api.anthropic.com/v1/",
+                    "grok":      "https://api.x.ai/v1/",
+                    "generic":   None,   # use default OpenAI base
+                    "openai":    None,   # use default OpenAI base
+                }
+                base_url = _PROVIDER_BASE_URLS.get(settings.LLM_PROVIDER)
+                client_kwargs: dict = {"api_key": settings.LLM_API_KEY}
+                if base_url:
+                    client_kwargs["base_url"] = base_url
+                client = openai.AsyncOpenAI(**client_kwargs)
                 completion = await client.chat.completions.create(
                     model=settings.LLM_FALLBACK_MODEL,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=256,
+                    max_tokens=512,
                 )
                 live_text = completion.choices[0].message.content or ""
                 return RoutingDecision(
@@ -127,7 +139,7 @@ async def route_and_call(
                     routellm_score=0.25, response=live_text, triage_state=None,
                 )
             except Exception as exc:
-                logger.warning("LLM direct fallback error: %s", exc)
+                logger.warning("LLM direct fallback error (%s): %s", settings.LLM_PROVIDER, exc)
 
         return RoutingDecision(
             classification="ROUTINE",
