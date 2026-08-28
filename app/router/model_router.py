@@ -23,6 +23,7 @@ except ImportError:
     _HAS_ROUTELLM = False
 
 from app.models import RoutingDecision, TriageState, UseCaseProfile
+from app.config import settings, _is_real_key
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +48,20 @@ def init_router() -> None:
     if not _HAS_ROUTELLM:
         logger.info("RouteLLM package not available; router disabled. Using mock responses.")
         _controller = None
+        if _is_real_key(settings.PORTKEY_API_KEY):
+            logger.info("PORTKEY_ACTIVE provider=%s", settings.LLM_PROVIDER)
+        else:
+            logger.info("PORTKEY_DEGRADED — mock responses active")
         return
     try:
         _controller = Controller(routers=["mf"])
     except Exception as e:
         logger.warning(f"Failed to initialize RouteLLM Controller: {e}")
         _controller = None
+    if _is_real_key(settings.PORTKEY_API_KEY):
+        logger.info("PORTKEY_ACTIVE provider=%s", settings.LLM_PROVIDER)
+    else:
+        logger.info("PORTKEY_DEGRADED — mock responses active")
 
 def _generate_contextual_response(prompt: str) -> str:
     """Generate realistic contextual answers for sandbox / dev evaluation."""
@@ -76,28 +85,61 @@ async def route_and_call(
 ) -> RoutingDecision:
     """Classify the prompt complexity and route to the appropriate model tier."""
     if _controller is None:
-        # Check if live OpenAI API is available via environment
-        import os
-        openai_key = os.environ.get("OPENAI_API_KEY")
-        if openai_key:
+        if _is_real_key(settings.PORTKEY_API_KEY):
+            # Portkey dispatch without RouteLLM score
+            try:
+                import httpx as _httpx
+                async with _httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.post(
+                        "https://api.portkey.ai/v1/chat/completions",
+                        headers={
+                            "x-portkey-api-key": settings.PORTKEY_API_KEY,
+                            "x-portkey-virtual-key": settings.PORTKEY_SLM_VIRTUAL_KEY,
+                            "x-portkey-provider": settings.LLM_PROVIDER,
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": settings.LLM_FALLBACK_MODEL,
+                            "messages": [{"role": "user", "content": prompt}],
+                        },
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    live_text = data["choices"][0]["message"]["content"] or ""
+                return RoutingDecision(
+                    classification="ROUTINE", selected_tier="SLM",
+                    routellm_score=0.25, response=live_text, triage_state=None,
+                )
+            except Exception as exc:
+                logger.warning("Portkey direct fallback error: %s", exc)
+        elif _is_real_key(settings.LLM_API_KEY):
             try:
                 import openai
-                client = openai.AsyncOpenAI(api_key=openai_key)
+                # Route to the correct OpenAI-compatible endpoint per provider
+                _PROVIDER_BASE_URLS = {
+                    "google":    "https://generativelanguage.googleapis.com/v1beta/openai/",
+                    "anthropic": "https://api.anthropic.com/v1/",
+                    "grok":      "https://api.x.ai/v1/",
+                    "generic":   None,   # use default OpenAI base
+                    "openai":    None,   # use default OpenAI base
+                }
+                base_url = _PROVIDER_BASE_URLS.get(settings.LLM_PROVIDER)
+                client_kwargs: dict = {"api_key": settings.LLM_API_KEY}
+                if base_url:
+                    client_kwargs["base_url"] = base_url
+                client = openai.AsyncOpenAI(**client_kwargs)
                 completion = await client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=settings.LLM_FALLBACK_MODEL,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=256,
+                    max_tokens=512,
                 )
                 live_text = completion.choices[0].message.content or ""
                 return RoutingDecision(
-                    classification="ROUTINE",
-                    selected_tier="SLM",
-                    routellm_score=0.25,
-                    response=live_text,
-                    triage_state=None,
+                    classification="ROUTINE", selected_tier="SLM",
+                    routellm_score=0.25, response=live_text, triage_state=None,
                 )
             except Exception as exc:
-                logger.warning("OpenAI direct fallback error: %s", exc)
+                logger.warning("LLM direct fallback error (%s): %s", settings.LLM_PROVIDER, exc)
 
         return RoutingDecision(
             classification="ROUTINE",

@@ -30,9 +30,10 @@ htmlcov/
 telemetry.jsonl
 *.log
 
-# Env files
+# Env files — .env.example IS committed (it's the canonical reference)
 .env
-.env.*
+.env.local
+.env.*.local
 
 # OS
 .DS_Store

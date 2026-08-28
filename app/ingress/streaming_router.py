@@ -276,6 +276,7 @@ async def _stream_tokens_from_llm(
                 headers={
                     "x-portkey-api-key": portkey_key,
                     "x-portkey-virtual-key": settings.PORTKEY_SLM_VIRTUAL_KEY,
+                    "x-portkey-provider": settings.LLM_PROVIDER,
                     "Content-Type": "application/json",
                 },
                 json={

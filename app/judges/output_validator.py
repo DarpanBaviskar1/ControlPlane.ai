@@ -44,28 +44,51 @@ except ImportError:
 _LOADED_VALIDATORS: list[Any] = []
 
 
+def _hub_install(validator_id: str) -> None:
+    """Attempt `guardrails hub install <id>` via subprocess."""
+    import os
+    import subprocess
+    import sys
+    env = os.environ.copy()
+    if settings.GUARDRAILS_HUB_TOKEN:
+        env["GUARDRAILS_TOKEN"] = settings.GUARDRAILS_HUB_TOKEN
+    subprocess.check_call(
+        [sys.executable, "-m", "guardrails", "hub", "install", validator_id],
+        env=env,
+        timeout=60,
+    )
+
+
 def load_validators() -> None:
     """Load validators from Guardrails Hub.  Called once at startup."""
     if not _GUARDRAILS_AVAILABLE:
+        logger.warning("GUARDRAILS_DEGRADED — no validators active")
         return
 
-    validator_ids = [
-        v.strip()
-        for v in settings.GUARDRAILS_VALIDATORS.split(",")
-        if v.strip()
-    ]
+    validator_ids = [v.strip() for v in settings.GUARDRAILS_VALIDATORS.split(",") if v.strip()]
+    loaded, skipped = [], []
 
     for vid in validator_ids:
         try:
-            # guardrails hub install <validator-id> must be run beforehand.
-            # We attempt to import from the hub namespace.
             validator = gd.hub.load(vid)  # type: ignore[attr-defined]
             _LOADED_VALIDATORS.append((vid, validator))
-            logger.info("Guardrails validator loaded: %s", vid)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "Guardrails validator '%s' could not be loaded: %s — skipping", vid, exc
-            )
+            loaded.append(vid)
+        except Exception:
+            try:
+                _hub_install(vid)
+                validator = gd.hub.load(vid)  # type: ignore[attr-defined]
+                _LOADED_VALIDATORS.append((vid, validator))
+                loaded.append(vid)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("GUARDRAILS_SKIPPED validator=%s reason=%s", vid, exc)
+                skipped.append(vid)
+
+    if loaded:
+        logger.info("GUARDRAILS_LOADED validators=%s", ",".join(loaded))
+    if skipped:
+        logger.warning("GUARDRAILS_SKIPPED validators=%s", ",".join(skipped))
+    if not loaded:
+        logger.warning("GUARDRAILS_DEGRADED — no validators active")
 
 
 # ---------------------------------------------------------------------------

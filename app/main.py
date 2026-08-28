@@ -24,6 +24,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.config import _is_real_key
 from app.ingress.router import router as chat_router
 from app.ingress.streaming_router import router as streaming_router
 from app.judges.p1_judge import load_scanners as load_p1_scanners
@@ -49,6 +50,7 @@ from app.judges.output_validator import load_validators as load_guardrails_valid
 from app.judges.output_validator import validate_output
 from app.oversight.worldsense_oversight import evaluate_oversight
 from app.redteam.router import router as redteam_router
+from app.config_health.router import router as config_health_router
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -167,6 +169,40 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as _probe_exc:
         app.state.redteam_mcp_healthy = False
         logger.warning("REDTEAM_MCP_UNAVAILABLE: %s", _probe_exc)
+
+    # 11. Worldsense MCP health probe (Req. 5.2)
+    try:
+        from urllib.parse import urlparse, urlunparse
+        _ws_parsed = urlparse(settings.WORLDSENSE_MCP_URL)
+        _ws_health_url = urlunparse(_ws_parsed._replace(path="/health", query="", fragment=""))
+        async with _httpx.AsyncClient(timeout=2.0) as _ws_probe:
+            _ws_resp = await _ws_probe.get(_ws_health_url)
+            app.state.worldsense_mcp_healthy = _ws_resp.status_code == 200
+            if app.state.worldsense_mcp_healthy:
+                logger.info("WORLDSENSE_MCP_ACTIVE url=%s", settings.WORLDSENSE_MCP_URL)
+            else:
+                logger.warning("WORLDSENSE_MCP_UNAVAILABLE — heuristic fallback active")
+    except Exception as _ws_exc:
+        app.state.worldsense_mcp_healthy = False
+        logger.warning("WORLDSENSE_MCP_UNAVAILABLE — %s", _ws_exc)
+
+    # Startup configuration summary (no secret values logged)
+    from app.judges.output_validator import _LOADED_VALIDATORS as _ov_validators
+    _tracer_obj = getattr(app.state, "langfuse_tracer", None)
+    _langfuse_active = _tracer_obj is not None and getattr(_tracer_obj, "_enabled", False)
+    logger.info(
+        "ControlPlane.ai configuration summary:\n"
+        "  LLM direct key : %s\n"
+        "  Portkey        : %s\n"
+        "  Langfuse       : %s\n"
+        "  Guardrails     : %s\n"
+        "  Worldsense MCP : %s",
+        "CONFIGURED" if _is_real_key(settings.LLM_API_KEY) else "NOT CONFIGURED",
+        f"ACTIVE (provider={settings.LLM_PROVIDER})" if _is_real_key(settings.PORTKEY_API_KEY) else "DEGRADED (mock)",
+        f"ACTIVE (host={settings.LANGFUSE_HOST})" if _langfuse_active else "DEGRADED (stdout)",
+        f"ACTIVE ({len(_ov_validators)} validators)" if _ov_validators else "DEGRADED (none loaded)",
+        f"ACTIVE ({settings.WORLDSENSE_MCP_URL})" if app.state.worldsense_mcp_healthy else "DEGRADED (heuristic)",
+    )
 
     # 7. Pipeline function
     async def run_pipeline(ctx) -> None:
@@ -408,3 +444,4 @@ app.include_router(streaming_router)
 app.include_router(metrics_router)
 app.include_router(feedback_router)
 app.include_router(redteam_router)
+app.include_router(config_health_router)
