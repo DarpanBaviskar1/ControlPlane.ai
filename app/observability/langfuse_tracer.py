@@ -82,8 +82,9 @@ class LangfuseTracer:
         if not _LANGFUSE_AVAILABLE:
             logger.info("Langfuse SDK unavailable — tracing disabled")
             return
-        if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
-            logger.info("Langfuse credentials not set — tracing disabled (stdout fallback)")
+        from app.config import _is_real_key
+        if not (_is_real_key(settings.LANGFUSE_PUBLIC_KEY) and _is_real_key(settings.LANGFUSE_SECRET_KEY)):
+            logger.info("LANGFUSE_DEGRADED — stdout fallback active")
             return
 
         try:
@@ -93,13 +94,13 @@ class LangfuseTracer:
                 host=settings.LANGFUSE_HOST,
             )
             self._enabled = True
-            logger.info("Langfuse tracing enabled (host=%s)", settings.LANGFUSE_HOST)
+            logger.info("LANGFUSE_ACTIVE host=%s", settings.LANGFUSE_HOST)
             # Start background retry task for buffered events
             self._retry_task = asyncio.create_task(
                 self._retry_loop(), name="langfuse-retry"
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Langfuse client init failed: %s — continuing without tracing", exc)
+            logger.warning("Langfuse init failed: %s — LANGFUSE_DEGRADED stdout fallback active", exc)
 
     async def stop(self) -> None:
         """Flush pending traces and shut down."""

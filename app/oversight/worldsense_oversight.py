@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from typing import Any
 
@@ -29,12 +28,9 @@ from app.models import ConversationTurn, WorldsenseVerdict
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# MCP server URL (set WORLDSENSE_MCP_URL env var to override)
+# MCP server URL (configured via WORLDSENSE_MCP_URL setting)
 # ---------------------------------------------------------------------------
-_MCP_URL: str = os.getenv(
-    "WORLDSENSE_MCP_URL",
-    f"http://localhost:{os.getenv('WORLDSENSE_MCP_PORT', '9100')}/evaluate",
-)
+_MCP_URL: str = settings.WORLDSENSE_MCP_URL
 # Whether the MCP server is reachable (checked lazily, cached per-process)
 _MCP_HEALTHY: bool | None = None  # None = unchecked
 
