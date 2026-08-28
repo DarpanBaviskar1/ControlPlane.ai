@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "worldsense": {
+      "command": "python",
+      "args": ["mcp_servers/worldsense/server.py"],
+      "env": {
+        "WORLDSENSE_TIMEOUT_MS": "300",
+        "WORLDSENSE_MCP_PORT": "9100"
+      },
+      "disabled": false,
+      "description": "Isolated Worldsense multi-turn agentic oversight server. Runs in its own process so worldsense SDK dependency conflicts never affect the main gateway venv."
+    }
+  }
+}
