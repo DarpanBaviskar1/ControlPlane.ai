@@ -27,6 +27,7 @@ async def p2_judge(
     profile: UseCaseProfile,
     pii_engine: object,  # PIIMaskingEngine
     request_id: str,
+    gliner_model: object | None = None,
 ) -> P2Verdict:
     """Detect PII in *prompt* and return a P2Verdict.
 
@@ -38,7 +39,11 @@ async def p2_judge(
 
     try:
         masked_prompt, placeholder_map = await asyncio.to_thread(
-            pii_engine.mask, prompt, request_id
+            pii_engine.mask,
+            prompt,
+            request_id,
+            profile.custom_entity_terms or [],
+            gliner_model,
         )
         pii_count = len(placeholder_map)
         return P2Verdict(

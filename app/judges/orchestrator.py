@@ -52,10 +52,13 @@ async def run_micro_judges(ctx: RequestContext, pii_engine: object) -> None:
     short-circuit logic and PII masking before returning.
     """
     timeout_s = ctx.profile.inspection_timeout_ms / 1000.0
+    # GLiNER model stored on app.state — accessed from the pii_engine's enclosing
+    # lifespan scope via a duck-typed sentinel on the engine itself.
+    gliner_model: object | None = getattr(pii_engine, "_app_gliner_model", None)
 
     try:
         p1_verdict, p2_verdict, p3_verdict = await asyncio.wait_for(
-            _run_all_judges(ctx, pii_engine),
+            _run_all_judges(ctx, pii_engine, gliner_model),
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
@@ -123,12 +126,12 @@ async def run_micro_judges(ctx: RequestContext, pii_engine: object) -> None:
 
 
 async def _run_all_judges(
-    ctx: RequestContext, pii_engine: object
+    ctx: RequestContext, pii_engine: object, gliner_model: object | None = None
 ) -> tuple[P1Verdict, P2Verdict, "Literal['CLEAR', 'AMBIGUOUS']"]:  # type: ignore[name-defined]
     """Run P1, P2, P3 concurrently; apply per-judge failure isolation."""
     results = await asyncio.gather(
         _safe_p1(ctx.working_prompt),
-        _safe_p2(ctx.working_prompt, ctx.profile, pii_engine, ctx.request_id),
+        _safe_p2(ctx.working_prompt, ctx.profile, pii_engine, ctx.request_id, gliner_model),
         _safe_p3(ctx.working_prompt),
         return_exceptions=False,
     )
@@ -144,10 +147,11 @@ async def _safe_p1(prompt: str) -> P1Verdict:
 
 
 async def _safe_p2(
-    prompt: str, profile: object, pii_engine: object, request_id: str
+    prompt: str, profile: object, pii_engine: object, request_id: str,
+    gliner_model: object | None = None,
 ) -> P2Verdict:
     try:
-        return await p2_judge(prompt, profile, pii_engine, request_id)
+        return await p2_judge(prompt, profile, pii_engine, request_id, gliner_model)
     except Exception as exc:
         logger.error("P2 judge raised unexpectedly: %s — defaulting maxsize PII", exc)
         return P2Verdict(pii_count=sys.maxsize, masked_prompt=None)

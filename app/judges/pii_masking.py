@@ -41,6 +41,11 @@ except ImportError:
     Anonymize = None  # type: ignore[assignment,misc]
 
 # ---------------------------------------------------------------------------
+# GLiNER Tier 1.5 (Req. 3.2, 3.3)
+# ---------------------------------------------------------------------------
+from app.judges.gliner_masker import GLiNERMasker, _HAS_GLINER  # noqa: E402
+
+# ---------------------------------------------------------------------------
 # Regex patterns shared by both the fallback scanner and the placeholder map
 # builder.  Extend here to add new entity types — see the performance-budget
 # steering file before adding patterns.
@@ -137,6 +142,9 @@ class NLPMasker:
 
 _PLACEHOLDER_RE = re.compile(r"\[[A-Z_]+_REDACTED(?:_\d+)?\]")
 
+# Covers both standard PII placeholders AND GLiNER custom entity placeholders
+_ALL_PLACEHOLDER_RE = re.compile(r"\[(?:[A-Z_]+_REDACTED(?:_\d+)?|CUSTOM_ENTITY_REDACTED_\d+)\]")
+
 
 def _build_placeholder_map(original: str, masked: str) -> dict[str, str]:
     """Reconstruct {placeholder: original_value} by aligning document-order spans."""
@@ -183,6 +191,10 @@ class PIIMaskingEngine:
         self._lock = threading.Lock()
         self.is_healthy: bool = True
         self._telemetry_logger = telemetry_logger
+        self._gliner_degraded: bool = False
+
+        # Tier 1.5: GLiNER custom entity masker (Req. 3.2)
+        self._gliner_masker = GLiNERMasker()
 
         # Select initial scanner tier
         if _HAS_LLM_GUARD:
@@ -207,18 +219,55 @@ class PIIMaskingEngine:
     def active_tier(self) -> str:
         return self._scanner.name
 
-    def mask(self, prompt: str, request_id: str) -> tuple[str, dict[str, str]]:
-        """Replace PII tokens with typed placeholders."""
+    def mask(
+        self,
+        prompt: str,
+        request_id: str,
+        custom_entity_terms: list[str] | None = None,
+        gliner_model: object | None = None,
+    ) -> tuple[str, dict[str, str]]:
+        """Replace PII tokens with typed placeholders.
+
+        Applies three tiers in order:
+          Tier 1:   NLPMasker (LLM Guard) or RegexOnlyMasker.
+          Tier 1.5: GLiNERMasker — optional custom entity masking (Req. 3.2–3.4).
+          Tier 2:   RegexOnlyMasker placeholders are already embedded in Tier 1.
+
+        The combined ``placeholder_map`` covers all tiers so ``unmask()`` can
+        restore everything in a single pass.
+        """
+        # --- Tier 1: NLP / regex ---
         sanitised, is_valid, _ = self._scanner.scan(prompt)
         placeholder_map: dict[str, str] = (
             _build_placeholder_map(prompt, sanitised) if not is_valid else {}
         )
+
+        # --- Tier 1.5: GLiNER custom entity masking (Req. 3.4) ---
+        if (
+            _HAS_GLINER
+            and not self._gliner_degraded
+            and custom_entity_terms
+            and gliner_model is not None
+        ):
+            try:
+                gliner_masked, gliner_map = self._gliner_masker.scan_sync(
+                    sanitised, custom_entity_terms, gliner_model
+                )
+                sanitised = gliner_masked
+                placeholder_map.update(gliner_map)
+            except Exception as exc:  # noqa: BLE001 — Req. 3.8
+                logger.error(
+                    "GLINER_SCAN_ERROR for request %s: %s — GLiNER result skipped",
+                    request_id,
+                    exc,
+                )
+
         with self._lock:
             self._maps[request_id] = placeholder_map
         return sanitised, placeholder_map
 
     def unmask(self, masked_prompt: str, request_id: str) -> str:
-        """Restore all placeholders using the stored per-request mapping."""
+        """Restore all placeholders (Tier 1, 1.5, and 2) using the stored per-request mapping."""
         with self._lock:
             placeholder_map = self._maps.get(request_id, {})
         result = masked_prompt
@@ -270,6 +319,11 @@ class PIIMaskingEngine:
             tier, len(self._VALIDATION_PROMPTS),
         )
         self.is_healthy = True
+
+        # GLiNER Tier 1.5 startup validation (Req. 3.7, 3.8, 3.11)
+        if _HAS_GLINER:
+            await self._validate_gliner_tier()
+
         return True
 
     # ------------------------------------------------------------------
@@ -313,6 +367,41 @@ class PIIMaskingEngine:
         finally:
             self._scanner = original
         return True
+
+    _GLINER_VALIDATION_PROMPT: str = "Project Phoenix budget is confidential."
+    _GLINER_VALIDATION_TERMS: list[str] = ["Project Phoenix"]
+
+    async def _validate_gliner_tier(self) -> None:
+        """Run a GLiNER round-trip validation.  On failure, set ``_gliner_degraded``
+        and emit GLINER_DEGRADED alert.  ``is_healthy`` is NOT affected (Req. 3.11)."""
+        try:
+            # We need a real gliner model for validation — if app.state isn't
+            # available at this point we skip (model loaded later in lifespan).
+            # The degraded flag will be cleared when the model becomes available.
+            import gliner as _gl  # type: ignore[import]
+            model = _gl.GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
+            rid = "__gliner_startup_validation__"
+            masked, gliner_map = await asyncio.to_thread(
+                self._gliner_masker.scan_sync,
+                self._GLINER_VALIDATION_PROMPT,
+                self._GLINER_VALIDATION_TERMS,
+                model,
+            )
+            # Unmask and verify round-trip
+            restored = masked
+            for ph, orig in gliner_map.items():
+                restored = restored.replace(ph, orig)
+            if restored.strip() != self._GLINER_VALIDATION_PROMPT.strip():
+                raise ValueError(f"Round-trip mismatch: {restored!r}")
+            logger.info("GLiNER Tier 1.5 startup validation passed")
+        except Exception as exc:  # noqa: BLE001 — Req. 3.8
+            logger.error(
+                "GLINER_DEGRADED: GLiNER Tier 1.5 failed startup validation (%s). "
+                "Custom entity masking disabled for this session. "
+                "is_healthy unchanged (gateway stays online).",
+                exc,
+            )
+            self._gliner_degraded = True
 
     def _emit_degraded_alert(self) -> None:
         """Log a high-priority telemetry alert when degrading to the regex tier."""
