@@ -39,8 +39,16 @@ from app.triage.gateway import evaluate
 from app.triage.compressor import compress_and_edit
 from app.judges.orchestrator import run_orchestrator
 
+# New imports for Round 2 open-source modules
+from app.observability.langfuse_tracer import get_tracer
+from app.judges.output_validator import load_validators as load_guardrails_validators
+from app.judges.output_validator import validate_output
+from app.oversight.worldsense_oversight import evaluate_oversight
+from app.redteam.router import router as redteam_router
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
 
 
 # ---------------------------------------------------------------------------
@@ -74,10 +82,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
     app.state.pii_engine = pii_engine
 
-    # 5. TelemetryLogger
+    # 5. Telemetry / Observability
     telemetry_logger = TelemetryLogger()
     await telemetry_logger.start()
     app.state.telemetry_logger = telemetry_logger
+
+    langfuse_tracer = get_tracer()
+    await langfuse_tracer.start()
+    app.state.langfuse_tracer = langfuse_tracer
+
+    # 5b. Guardrails AI output validators
+    await asyncio.to_thread(load_guardrails_validators)
 
     # 6. RouteLLM Controller
     init_router()
@@ -122,6 +137,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ctx.llm_response = decision.response
         response_token_count = len(ctx.llm_response.split()) if ctx.llm_response else 0
 
+        # --- 2b. Guardrails AI Output Validation (Req. 2.11-13) ---
+        if ctx.llm_response:
+            guardrails_verdict = await validate_output(ctx.llm_response)
+            ctx.guardrails_verdict = guardrails_verdict
+            if not guardrails_verdict.passed:
+                if guardrails_verdict.action == "fix" and guardrails_verdict.fixed_output:
+                    ctx.llm_response = guardrails_verdict.fixed_output
+                    response_token_count = len(ctx.llm_response.split())
+                else:
+                    # Action is filter or exception -> HARD_BLOCK
+                    ctx.upstream_triage_state = "HARD_BLOCK"
+                    ctx.triage_result = evaluate(
+                        groundedness_score=0.0,
+                        response_token_count=0,
+                        upstream_triage_state="HARD_BLOCK",
+                        p3_clarity=ctx.p3_verdict or "AMBIGUOUS",
+                        profile=ctx.profile,
+                    )
+                    return
+
         # --- 3. Groundedness Auditor ---
         audit_res = await audit(
             response=ctx.llm_response or "",
@@ -129,6 +164,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             vector_store=app.state.vector_store
         )
         ctx.audit_result = audit_res
+
+        # --- 3b. Worldsense Multi-Turn Agentic Oversight (Req. 12) ---
+        if ctx.profile.agentic_oversight_enabled and len(ctx.conversation_history) > 0:
+            worldsense_verdict = await evaluate_oversight(
+                history=ctx.conversation_history,
+                proposed_response=ctx.llm_response or "",
+                request_id=ctx.request_id,
+            )
+            ctx.worldsense_verdict = worldsense_verdict
+            if worldsense_verdict.verdict == "CONSEQUENCE_ALERT":
+                ctx.upstream_triage_state = "HARD_BLOCK"
+            elif worldsense_verdict.verdict == "RISK_DETECTED":
+                if ctx.upstream_triage_state != "HARD_BLOCK":
+                    ctx.upstream_triage_state = "ESCALATE_TO_HUMAN"
 
         # --- 4. Triage Gateway ---
         triage_res = evaluate(
@@ -164,6 +213,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Shutdown
     await policy_loader.stop()
     await telemetry_logger.stop()
+    await langfuse_tracer.stop()
     logger.info("ControlPlane.ai Gateway stopped")
 
 
@@ -209,3 +259,4 @@ async def validation_exception_handler(
 app.include_router(chat_router)
 app.include_router(metrics_router)
 app.include_router(feedback_router)
+app.include_router(redteam_router)

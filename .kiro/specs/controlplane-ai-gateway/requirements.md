@@ -2,35 +2,47 @@
 
 ## Introduction
 
-ControlPlane.ai is a Python-based enterprise AI proxy gateway that sits between enterprise applications/agents and underlying large language models. It implements a five-stage request pipeline — Enterprise Ingress, Streaming Micro-Judges, Intelligent Model Router, Groundedness Audit, and Action Triage Gateway — to enforce safety, cost optimisation, and governance policies before delivering AI-generated responses to callers.
+ControlPlane.ai is a Python-based enterprise AI proxy gateway that sits between enterprise applications and agents and the underlying large language models. It implements a six-stage request pipeline — Enterprise Ingress, Streaming Micro-Judges, Intelligent Model Router, Groundedness Audit, Action Triage Gateway, and Multi-Turn Agentic Oversight — to enforce safety, cost optimisation, governance, and agent action control policies before delivering AI-generated responses to callers.
 
-The system is designed to handle tens of thousands of interactions per week across multiple business use cases (e.g., Customer Chatbot, Internal Copilot), with configurable risk tolerance and latency budgets per use case profile. It is built on FastAPI, Portkey, RouteLLM, and LLM Guard by Protect AI.
+The system is designed to handle tens of thousands of interactions per week across multiple business use cases (e.g., Customer Chatbot, Internal Copilot), with configurable risk tolerance and latency budgets per use case profile. It is built on FastAPI, Portkey AI Gateway, RouteLLM, LLM Guard (Protect AI), Guardrails AI, Langfuse, PyRIT, Obot, and Worldsense.
+
+The architecture follows the "Ultimate Prototype Stack" design philosophy: Portkey acts as the central traffic controller, RouteLLM handles cost-saving complexity routing, LLM Guard and Guardrails AI provide chained input/output scanning, Langfuse provides observability and closed-loop feedback, PyRIT and Garak continuously red-team the system, Obot governs agent tool calls, and Worldsense provides multi-turn agentic reality checks.
 
 ---
 
 ## Glossary
 
-- **Gateway**: The ControlPlane.ai FastAPI service that orchestrates the full five-stage pipeline.
+- **Gateway**: The ControlPlane.ai FastAPI service that orchestrates the full six-stage pipeline.
 - **Request**: An inbound HTTP call containing a user prompt and a use-case profile, received by the Gateway.
 - **Use_Case_Profile**: A named configuration object that encodes risk tolerance, latency budget, and routing thresholds for a specific business context (e.g., `customer_chatbot`, `internal_copilot`).
-- **Micro_Judge**: A lightweight parallel Safety Language Model inspector that evaluates a single safety dimension of an inbound prompt.
-- **P1_Judge**: The Micro_Judge responsible for toxicity detection and prompt-injection detection.
-- **P2_Judge**: The Micro_Judge responsible for PII (Personally Identifiable Information) detection and masking.
+- **Micro_Judge**: A chained input/output safety validator that evaluates a single safety dimension of an inbound prompt.
+- **P1_Judge**: The Micro_Judge responsible for toxicity detection and prompt-injection detection, backed by LLM Guard scanners.
+- **P2_Judge**: The Micro_Judge responsible for PII (Personally Identifiable Information) detection and masking, backed by LLM Guard Anonymize.
 - **P3_Judge**: The Micro_Judge that signals prompt clarity for downstream routing.
-- **PII_Masking_Engine**: The component (backed by LLM Guard) that replaces detected PII tokens with anonymised placeholders before the prompt reaches any LLM.
+- **Guardrails_AI**: The Python framework (guardrails-ai/guardrails) used to chain multiple validators with configurable on_fail actions such as exception, filter, or fix. It complements LLM Guard by operating at the output stage and providing a structured Hub of pre-built validators.
+- **PII_Masking_Engine**: The component (backed by LLM Guard Anonymize) that replaces detected PII tokens with anonymised placeholders before the prompt reaches any LLM.
 - **Model_Router**: The component (backed by RouteLLM) that classifies prompt complexity and selects a target model tier.
 - **SLM**: Small Language Model — the low-cost model tier used for routine tasks.
-- **Frontier_Model**: High-capability model tier (e.g., GPT-4, Claude Sonnet) used for complex reasoning tasks.
+- **Frontier_Model**: High-capability model tier (e.g., GPT-4o, Claude Sonnet) used for complex reasoning tasks.
+- **Portkey_Gateway**: The central AI gateway layer (Portkey-AI/gateway) that routes requests to the correct LLM tier, provides unified fallback, retry, and rate-limiting, and exposes observability hooks consumed by Langfuse.
 - **Groundedness_Auditor**: The streaming RAG evaluator that scores LLM responses against the Enterprise Vector Store.
 - **Enterprise_Vector_Store**: The organisation's authoritative knowledge base used as the grounding reference corpus.
 - **Action_Triage_Gateway**: The final decision component that maps audit scores and response metadata to one of four deterministic output states.
 - **Triage_State**: One of four deterministic outcomes produced by the Action_Triage_Gateway: `PASS_AND_DELIVER`, `COMPRESS_AND_EDIT`, `ESCALATE_TO_HUMAN`, or `HARD_BLOCK`.
 - **Hard_Block**: A terminal triage state that prevents any LLM response from being returned to the caller and returns a structured error payload instead.
-- **Telemetry_Logger**: The component that records per-request observability data including routing decision, latency measurements, and safety trigger results.
+- **Langfuse**: The open-source LLM observability platform (langfuse/langfuse) used in place of the custom Telemetry Logger. Langfuse provides structured trace recording, span-level latency attribution, evaluation scoring, and a feedback loop UI where human operators can override triage decisions, which dynamically adjusts detection sensitivity.
+- **Langfuse_Trace**: A single Langfuse observation object created per Request, containing nested spans for each pipeline stage, judge verdicts, routing decision, groundedness score, final triage state, and any override events.
 - **Policy_Layer**: The configurable rules engine that maps Use_Case_Profile values to pipeline behaviour thresholds.
 - **Groundedness_Score**: A floating-point value in [0.0, 1.0] produced by the Groundedness_Auditor representing how well the LLM response is supported by the Enterprise_Vector_Store.
 - **Latency_Budget**: The maximum allowable end-to-end processing time in milliseconds defined per Use_Case_Profile.
-- **Feedback_Loop**: The mechanism by which flagged or human-overridden cases are recorded and made available for model/policy improvement.
+- **Feedback_Loop**: The mechanism by which flagged or human-overridden cases are recorded in Langfuse and used to dynamically adjust detection sensitivity thresholds, reducing false positive rates over time.
+- **Red_Team_Runner**: The automated adversarial component (backed by PyRIT or Garak) that continuously sends crafted attack prompts to the Gateway to verify that guardrails hold against known jailbreak, toxicity, and prompt injection patterns.
+- **PyRIT**: Microsoft's open-source Python Risk Identification Toolkit — a multi-turn adversarial conversation framework used to stress-test the Gateway pipeline by generating and scoring adversarial attack prompts.
+- **Garak**: NVIDIA's open-source LLM vulnerability scanner providing over 100 automated probes for jailbreaks, toxicity, and data leakage, used alongside PyRIT to broaden attack surface coverage.
+- **Obot**: The open-source agent governance gateway used to intercept, authenticate, authorise, and log every MCP tool call made by an autonomous agent before it reaches a backend server.
+- **MCP_Tool_Call**: A Model Context Protocol action request emitted by an AI agent that instructs the backend to execute a tool (e.g., a database query, API call, or code execution). Every MCP_Tool_Call must pass through Obot before execution.
+- **Worldsense**: The open-source multi-turn agentic reality-check layer that detects hidden risks, missing context, and real-world consequences before an LLM takes an action in a multi-turn conversation.
+- **Agentic_Oversight_Stage**: The sixth pipeline stage, backed by Worldsense, that evaluates the cumulative multi-turn context of an agent conversation before final response delivery or tool execution.
 
 ---
 
@@ -54,9 +66,9 @@ The system is designed to handle tens of thousands of interactions per week acro
 
 ---
 
-### Requirement 2: Parallel Streaming Micro-Judges (Input Guardrails)
+### Requirement 2: Parallel Streaming Micro-Judges (Input and Output Guardrails)
 
-**User Story:** As a security and compliance officer, I want incoming prompts inspected in parallel by specialised safety judges so that toxicity, prompt injection, and PII violations are caught before any LLM is invoked.
+**User Story:** As a security and compliance officer, I want incoming prompts inspected in parallel by specialised safety judges and LLM outputs validated by chained Guardrails AI validators so that toxicity, prompt injection, PII violations, and output risks are caught at both the input and output stages.
 
 #### Acceptance Criteria
 
@@ -67,9 +79,12 @@ The system is designed to handle tens of thousands of interactions per week acro
 5. WHEN P2_Judge reports a PII token count greater than zero and the Use_Case_Profile has `pii_masking_enabled` set to `true`, THE PII_Masking_Engine SHALL replace each detected token with a typed placeholder (e.g., `[SSN_REDACTED]`, `[NAME_REDACTED]`) before the prompt proceeds to the Model_Router.
 6. IF the PII_Masking_Engine fails to mask one or more detected PII tokens, THEN THE Gateway SHALL set the Triage_State to `HARD_BLOCK` and SHALL NOT forward the prompt downstream.
 7. WHEN P3_Judge evaluates a prompt, THE P3_Judge SHALL produce a clarity verdict of `CLEAR` or `AMBIGUOUS`, where `AMBIGUOUS` is assigned when the prompt contains 10 or fewer tokens or contains no identifiable main verb, and `CLEAR` otherwise.
-8. IF any of P1_Judge, P2_Judge, or P3_Judge encounters an internal error during evaluation, THEN THE Gateway SHALL treat that judge's verdict as `BLOCK` (for P1) or the most restrictive safe default for P2 and P3, and SHALL record an error event in the Telemetry_Logger.
-9. IF the Micro-Judge stage does not complete within the `inspection_timeout_ms` value defined in the Use_Case_Profile, THEN THE Gateway SHALL set the Triage_State to `ESCALATE_TO_HUMAN` and SHALL log a timeout event in the Telemetry_Logger.
-10. THE Gateway SHALL record in the Telemetry_Logger, for every Request: the P1 toxicity verdict, the P1 injection verdict, the P2 PII token count, and the P3 clarity verdict, regardless of outcome.
+8. IF any of P1_Judge, P2_Judge, or P3_Judge encounters an internal error during evaluation, THEN THE Gateway SHALL treat that judge's verdict as `BLOCK` (for P1) or the most restrictive safe default for P2 and P3, and SHALL record an error span in the Langfuse_Trace for that Request.
+9. IF the Micro-Judge stage does not complete within the `inspection_timeout_ms` value defined in the Use_Case_Profile, THEN THE Gateway SHALL set the Triage_State to `ESCALATE_TO_HUMAN` and SHALL record a timeout span in the Langfuse_Trace.
+10. THE Gateway SHALL record in the Langfuse_Trace, for every Request: the P1 toxicity verdict, the P1 injection verdict, the P2 PII token count, and the P3 clarity verdict, regardless of outcome.
+11. AFTER the LLM response is received from the Model_Router, THE Gateway SHALL pass the response through a Guardrails AI output validation chain before forwarding it to the Groundedness_Auditor. The chain SHALL include at minimum: a Toxic Language validator and a Competitor check validator, both downloaded from the Guardrails AI Hub.
+12. WHEN a Guardrails AI output validator triggers an `on_fail` action of `exception` or `filter`, THE Gateway SHALL treat the response as if the Groundedness_Score were 0.0 and SHALL set the Triage_State to `HARD_BLOCK`, recording the triggering validator name as the blocking reason in the Langfuse_Trace.
+13. WHEN a Guardrails AI output validator triggers an `on_fail` action of `fix`, THE Gateway SHALL use the fixed output in place of the original LLM response for all downstream stages, recording the fix event as a span in the Langfuse_Trace.
 
 ---
 
@@ -84,8 +99,8 @@ The system is designed to handle tens of thousands of interactions per week acro
 3. WHEN the Model_Router classifies a prompt as `COMPLEX`, THE Model_Router SHALL route the Request to the Frontier_Model tier.
 4. WHERE a Use_Case_Profile specifies a `complexity_threshold` value, THE Model_Router SHALL classify a prompt as `ROUTINE` when RouteLLM's confidence score is below that threshold and `COMPLEX` when at or above it; WHERE no `complexity_threshold` is specified in the Use_Case_Profile, THE Model_Router SHALL use a default threshold of 0.7.
 5. THE Model_Router SHALL target a routing distribution where approximately 80% of Requests are classified as `ROUTINE` and approximately 20% are classified as `COMPLEX` under a representative mixed workload, within a tolerance of ±10 percentage points when measured over a minimum sample of 1,000 Requests.
-6. THE Telemetry_Logger SHALL record the routing decision (`ROUTINE` or `COMPLEX`), the selected model tier, and the RouteLLM confidence score for every Request processed by the Model_Router.
-7. IF the selected model tier is unavailable or returns an error, THEN THE Model_Router SHALL attempt the Request on the alternative model tier exactly once; IF the alternative model tier also fails, THEN THE Model_Router SHALL set the Triage_State to `HARD_BLOCK` and SHALL record a `MODEL_TIER_FAILURE` event in the Telemetry_Logger.
+6. THE Gateway SHALL record the routing decision (`ROUTINE` or `COMPLEX`), the selected model tier, and the RouteLLM confidence score as a span within the Langfuse_Trace for every Request processed by the Model_Router.
+7. IF the selected model tier is unavailable or returns an error, THEN THE Model_Router SHALL attempt the Request on the alternative model tier exactly once via the Portkey_Gateway fallback configuration; IF the alternative model tier also fails, THEN THE Model_Router SHALL set the Triage_State to `HARD_BLOCK` and SHALL record a `MODEL_TIER_FAILURE` event in the Langfuse_Trace.
 
 ---
 
@@ -98,8 +113,8 @@ The system is designed to handle tens of thousands of interactions per week acro
 1. WHEN an LLM response is received from either model tier, THE Groundedness_Auditor SHALL score the response against the Enterprise_Vector_Store and produce a Groundedness_Score in the range [0.0, 1.0].
 2. WHEN the Groundedness_Auditor begins evaluating a response, THE Groundedness_Auditor SHALL produce an initial Groundedness_Score within 500 milliseconds of receiving the first token of the LLM response, without waiting for full response completion.
 3. THE Groundedness_Auditor SHALL use at minimum one of the following detection techniques: embedding-based similarity, statistical anomaly detection, or AI-as-judge evaluation against retrieved documents.
-4. THE Telemetry_Logger SHALL record the Groundedness_Score and the detection technique used for every Request processed by the Groundedness_Auditor.
-5. IF the Enterprise_Vector_Store is unreachable during a Groundedness_Auditor evaluation, THEN THE Groundedness_Auditor SHALL set the Groundedness_Score to 0.0, SHALL flag the response as `UNVERIFIED` in the telemetry record, and SHALL log a `VECTOR_STORE_UNAVAILABLE` event in the Telemetry_Logger.
+4. THE Gateway SHALL record the Groundedness_Score and the detection technique used as a span within the Langfuse_Trace for every Request processed by the Groundedness_Auditor.
+5. IF the Enterprise_Vector_Store is unreachable during a Groundedness_Auditor evaluation, THEN THE Groundedness_Auditor SHALL set the Groundedness_Score to 0.0, SHALL flag the response as `UNVERIFIED` in the Langfuse_Trace, and SHALL record a `VECTOR_STORE_UNAVAILABLE` event as an error span in the Langfuse_Trace.
 6. IF the Groundedness_Score produced by the Groundedness_Auditor is below 0.5, THEN THE Groundedness_Auditor SHALL emit a low-groundedness signal containing the Groundedness_Score and the detection technique used to the Action_Triage_Gateway before the response is delivered to the caller.
 
 ---
@@ -118,25 +133,26 @@ The system is designed to handle tens of thousands of interactions per week acro
 6. WHEN the Groundedness_Score is below 0.5, THE Action_Triage_Gateway SHALL set the Triage_State to `HARD_BLOCK` and SHALL return a structured error response to the caller containing the Triage_State value and the blocking reason, and SHALL NOT include any LLM-generated content in the response.
 7. IF any upstream pipeline stage has already set the Triage_State to `HARD_BLOCK`, THEN THE Action_Triage_Gateway SHALL preserve that state and SHALL NOT override it with a lower-severity state.
 8. THE Action_Triage_Gateway SHALL apply Triage_State evaluation rules in the following priority order: `HARD_BLOCK` (highest) → `ESCALATE_TO_HUMAN` → `COMPRESS_AND_EDIT` → `PASS_AND_DELIVER` (lowest), ensuring higher-severity states always take precedence.
-9. THE Telemetry_Logger SHALL record the final Triage_State, the Groundedness_Score, and the response token count for every Request processed by the Action_Triage_Gateway.
+9. THE Gateway SHALL record the final Triage_State, the Groundedness_Score, and the response token count as a span within the Langfuse_Trace for every Request processed by the Action_Triage_Gateway.
 
 ---
 
-### Requirement 6: Telemetry Logging and Observability
+### Requirement 6: Observability and Closed-Loop Feedback (Langfuse)
 
-**User Story:** As a platform operator, I want every request to produce a structured telemetry record so that I can monitor safety triggers, routing decisions, latency overhead, and system health in a single observability feedback loop.
+**User Story:** As a platform operator, I want every request to produce a structured trace in Langfuse so that I can monitor safety triggers, routing decisions, latency overhead, system health, and dynamically reduce alert fatigue through a closed-loop feedback mechanism.
 
 #### Acceptance Criteria
 
-1. THE Telemetry_Logger SHALL produce one structured log record per Request containing: request ID, timestamp, Use_Case_Profile name, P1/P2/P3 judge verdicts, routing decision, selected model tier, Groundedness_Score, final Triage_State, and end-to-end latency in milliseconds.
-2. THE Telemetry_Logger SHALL write each log record within 50 milliseconds of the Request completing the pipeline, and SHALL NOT add more than 5 milliseconds of observable latency to the response delivery to the caller.
-3. THE Gateway SHALL assign a unique request_id (UUID v4) to every inbound Request.
-4. THE Telemetry_Logger SHALL include the request_id assigned by the Gateway in every log record associated with that Request.
-5. WHEN a Request results in a `HARD_BLOCK` Triage_State, THE Telemetry_Logger SHALL additionally record the specific blocking trigger (e.g., `P1_TOXICITY`, `P1_INJECTION`, `LOW_GROUNDEDNESS`) in the log record.
-6. WHEN a Request results in an `ESCALATE_TO_HUMAN` Triage_State, THE Telemetry_Logger SHALL store the full prompt (post-masking) and full LLM response in the escalation log for human review.
-7. THE Telemetry_Logger SHALL expose a summary metrics endpoint at `/v1/metrics` returning aggregate counts of each Triage_State, average Groundedness_Score, and routing distribution; the time window SHALL be configurable with a default of 60 minutes and a valid range of 1 minute to 1,440 minutes.
-8. THE Feedback_Loop SHALL make escalated cases and human-reviewer-overridden cases — where an operator has manually changed the system's Triage_State verdict after the fact — available via a structured export at `/v1/feedback/export` so that they can be used to improve detection quality and policy thresholds.
-9. IF the Telemetry_Logger fails to write a log record, THEN THE Telemetry_Logger SHALL complete the failure within 5 seconds, SHALL NOT retry more than 3 times, and SHALL NOT propagate the failure to the caller's response.
+1. THE Gateway SHALL create one Langfuse_Trace per Request at the start of the pipeline, identified by the UUID v4 request_id. The trace SHALL contain nested spans for: Ingress validation, P1/P2/P3 judge execution, Model Router decision, Portkey dispatch, Groundedness Audit, Guardrails AI output validation, Action Triage, and (where applicable) the Agentic Oversight Stage.
+2. THE Gateway SHALL flush each Langfuse_Trace to the Langfuse backend within 50 milliseconds of the Request completing the pipeline, and trace submission SHALL NOT add more than 5 milliseconds of observable latency to the response delivery to the caller.
+3. THE Gateway SHALL assign a unique request_id (UUID v4) to every inbound Request, and this ID SHALL be used as the Langfuse_Trace ID and included in every API response body.
+4. WHEN a Request results in a `HARD_BLOCK` Triage_State, THE Gateway SHALL additionally record the specific blocking trigger (e.g., `P1_TOXICITY`, `P1_INJECTION`, `LOW_GROUNDEDNESS`, `GUARDRAILS_AI_FILTER`) as a metadata field on the Langfuse_Trace.
+5. WHEN a Request results in an `ESCALATE_TO_HUMAN` Triage_State, THE Gateway SHALL attach the full prompt (post-masking) and full LLM response as observation inputs and outputs in the Langfuse_Trace, making them available for human review in the Langfuse UI.
+6. THE Gateway SHALL expose a summary metrics endpoint at `/v1/metrics` returning aggregate counts of each Triage_State, average Groundedness_Score, and routing distribution, computed by querying the Langfuse API; the time window SHALL be configurable with a default of 60 minutes and a valid range of 1 minute to 1,440 minutes.
+7. WHEN a human operator reviews a flagged trace in the Langfuse UI and submits a correction via the `/v1/feedback/override` endpoint, THE Feedback_Loop SHALL record the operator ID, timestamp, original Triage_State, corrected Triage_State, and stated reason as a Langfuse evaluation score on the original trace.
+8. AFTER a human operator submits a correction via the Feedback_Loop, THE Gateway SHALL dynamically lower the detection sensitivity for the triggering judge or validator within the active Use_Case_Profile by a configurable decrement step (default 0.02 on the relevant threshold), up to a minimum floor defined per Use_Case_Profile. This adjustment SHALL take effect within 5 seconds of the override being recorded.
+9. THE Feedback_Loop SHALL make all escalated and overridden traces available via a structured export at `/v1/feedback/export` returning a JSON array of Langfuse trace IDs, evaluation scores, and corrected labels, so that they can be used for offline model and policy improvement.
+10. IF the Langfuse backend is unreachable, THE Gateway SHALL buffer up to 1,000 trace events in an in-memory queue, retry flushing every 30 seconds, and SHALL NOT propagate the failure to the caller's response.
 
 ---
 
@@ -181,3 +197,54 @@ The system is designed to handle tens of thousands of interactions per week acro
 3. WHEN `COMPRESS_AND_EDIT` is applied to a response, THE Action_Triage_Gateway SHALL ensure the compressed output contains no statements, claims, or named entities that were not present in the original response.
 4. WHEN the Gateway starts up, THE Gateway SHALL execute a round-trip validation suite of five synthetic test prompts containing known PII patterns against the PII_Masking_Engine.
 5. IF any prompt in the startup round-trip validation suite fails to produce a byte-for-byte identical result after whitespace normalisation, THEN THE Gateway SHALL log a `MASKING_INTEGRITY_FAILURE` event, SHALL reject all incoming requests with an error indicating the gateway is unavailable, and SHALL resume serving production traffic only after a subsequent execution of the full validation suite passes without failures.
+
+---
+
+### Requirement 10: Automated Red-Teaming and Continuous Security Validation (PyRIT + Garak)
+
+**User Story:** As a security architect, I want the Gateway to be continuously stress-tested by an automated adversarial component so that guardrail weaknesses are discovered and reported before real attackers exploit them, proving that the ControlPlane evolves faster than its threat landscape.
+
+#### Acceptance Criteria
+
+1. THE system SHALL include a Red_Team_Runner service that can be executed on-demand (via a `POST /v1/redteam/run` endpoint restricted to operator roles) or on a scheduled interval configurable per environment.
+2. WHEN the Red_Team_Runner executes, IT SHALL send at minimum 50 adversarial prompts to the `/v1/chat` endpoint targeting the `customer_chatbot` profile, covering the following attack categories: multi-turn jailbreaks, direct prompt injection, toxicity escalation, PII extraction attempts, and competitor-mention injection.
+3. THE Red_Team_Runner SHALL use PyRIT to orchestrate multi-turn adversarial conversations of at least 3 turns per attack scenario, automatically generating follow-up prompts based on the Gateway's previous responses.
+4. THE Red_Team_Runner SHALL use Garak to run at minimum 5 automated probe categories (jailbreak, toxicity, leakage, injection, hallucination) against the Gateway endpoint and record pass/fail results per probe.
+5. WHEN a Red_Team_Runner execution completes, IT SHALL produce a structured attack report containing: total prompts sent, number and percentage of successful blocks, number and percentage of successful attacks (where the Gateway returned LLM content it should have blocked), and the specific attack prompts that succeeded.
+6. WHEN the Red_Team_Runner detects a successful attack (a prompt that bypassed all guardrails and reached the caller), THE Red_Team_Runner SHALL record the attack prompt, the returned response, and the pipeline stage that failed to block it, as a high-severity event in the Langfuse_Trace tagged with label `RED_TEAM_BREAKTHROUGH`.
+7. THE Gateway SHALL expose a `GET /v1/redteam/report` endpoint that returns the results of the most recent Red_Team_Runner execution, including the attack report defined in criterion 5.
+8. THE Red_Team_Runner SHALL be decoupled from the production request path; its prompts SHALL be clearly marked with a `redteam_session_id` metadata field and SHALL NOT be included in production routing distribution metrics or Langfuse feedback loop calculations.
+
+---
+
+### Requirement 11: Agent Action Governance (Obot)
+
+**User Story:** As an enterprise security lead, I want every Model Context Protocol tool call made by an autonomous agent to pass through an authorisation gateway before execution so that agents cannot perform unauthorised database queries, code executions, or API calls, extending the ControlPlane's safety guarantees beyond text generation to agent actions.
+
+#### Acceptance Criteria
+
+1. THE Gateway SHALL integrate an Obot instance as the mandatory intercept layer for all MCP_Tool_Calls emitted by agents routed through the pipeline. No MCP_Tool_Call SHALL reach a backend tool server without first passing through Obot's authorisation check.
+2. WHEN an agent emits a MCP_Tool_Call, THE Obot layer SHALL evaluate the call against an authorisation policy that specifies which tool names, parameters, and parameter value ranges are permitted for each Use_Case_Profile. Calls that satisfy the policy SHALL be forwarded; calls that violate it SHALL be blocked.
+3. WHEN Obot blocks a MCP_Tool_Call, THE Gateway SHALL set the Triage_State to `HARD_BLOCK`, SHALL return a structured error to the agent containing the blocked tool name and the specific policy clause that was violated, and SHALL record the blocked call as a `TOOL_CALL_BLOCKED` event in the Langfuse_Trace.
+4. WHEN Obot authorises and forwards a MCP_Tool_Call, THE Obot layer SHALL log the agent identity (derived from the `request_id` and the `use_case_profile`), the tool name, all parameter names and values, and the timestamp of the call as an audit record in the Langfuse_Trace.
+5. THE Obot authorisation policy SHALL be stored in the Policy_Layer YAML or JSON configuration file alongside Use_Case_Profile definitions, with the following configurable fields per profile: `allowed_tools` (list of permitted tool names), `blocked_tools` (list of explicitly denied tool names), and `max_tool_calls_per_request` (positive integer, default 10).
+6. IF `max_tool_calls_per_request` is exceeded within a single Request, THE Obot layer SHALL block all further MCP_Tool_Calls for that Request, SHALL set the Triage_State to `ESCALATE_TO_HUMAN`, and SHALL record a `TOOL_CALL_LIMIT_EXCEEDED` event in the Langfuse_Trace.
+7. THE authorisation policy validation in Obot SHALL be enforced within 20 milliseconds per MCP_Tool_Call and SHALL NOT add more than 20 milliseconds of total latency per Request to the configured Latency_Budget.
+
+---
+
+### Requirement 12: Multi-Turn Agentic Oversight (Worldsense)
+
+**User Story:** As an enterprise risk officer, I want multi-turn agent conversations evaluated for hidden risks, missing context, and real-world consequence chains before the agent commits to a final action, so that the ControlPlane protects against compounding errors that only emerge across multiple conversation turns.
+
+#### Acceptance Criteria
+
+1. THE Gateway SHALL invoke the Agentic_Oversight_Stage (backed by Worldsense) for every Request where the `use_case_profile` has `agentic_oversight_enabled` set to `true` and the conversation contains more than one turn (i.e., the Request includes a non-empty `conversation_history` field).
+2. WHEN the Agentic_Oversight_Stage is invoked, THE Worldsense evaluator SHALL analyse the cumulative conversation history and the proposed next action or response, and SHALL produce an oversight verdict of `SAFE`, `RISK_DETECTED`, or `CONSEQUENCE_ALERT`.
+3. WHEN Worldsense produces a verdict of `SAFE`, THE Agentic_Oversight_Stage SHALL allow the pipeline to proceed to the Action_Triage_Gateway without modification.
+4. WHEN Worldsense produces a verdict of `RISK_DETECTED`, THE Agentic_Oversight_Stage SHALL inject a structured risk notice into the response metadata and SHALL set the Triage_State to `ESCALATE_TO_HUMAN`, recording the detected risk type and the specific turn index where the risk was identified in the Langfuse_Trace.
+5. WHEN Worldsense produces a verdict of `CONSEQUENCE_ALERT`, THE Agentic_Oversight_Stage SHALL set the Triage_State to `HARD_BLOCK`, SHALL return a structured error to the caller containing the consequence description, and SHALL record a `AGENTIC_CONSEQUENCE_BLOCK` event in the Langfuse_Trace.
+6. THE Agentic_Oversight_Stage SHALL complete its evaluation within 300 milliseconds per Request and SHALL NOT exceed this budget; if the budget is exceeded, THE Gateway SHALL treat the verdict as `RISK_DETECTED` and SHALL log a `WORLDSENSE_TIMEOUT` event in the Langfuse_Trace.
+7. THE `ChatRequest` body SHALL accept an optional `conversation_history` field containing an ordered array of prior turn objects, each with `role` (string: `user` or `assistant`) and `content` (string, max 32,768 characters), and a maximum of 50 prior turns per Request.
+8. WHEN `agentic_oversight_enabled` is `false` in the active Use_Case_Profile, THE Gateway SHALL skip the Agentic_Oversight_Stage entirely and SHALL NOT invoke Worldsense for Requests under that profile.
+
