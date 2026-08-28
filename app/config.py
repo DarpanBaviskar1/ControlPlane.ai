@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Maximum evaluation time before treating verdict as RISK_DETECTED (Req. 12.6)
     WORLDSENSE_TIMEOUT_MS: int = 300
 
+    # Phase 3 — Semantic Cache (Req. 1.3, 1.4)
+    CACHE_SIMILARITY_THRESHOLD: float = 0.92
+
     # Red Team Runner (Req. 10)
     REDTEAM_ENABLED: bool = True
     REDTEAM_MIN_PROMPTS: int = 50
