@@ -261,7 +261,8 @@ async def _stream_tokens_from_llm(
     portkey_key = settings.PORTKEY_API_KEY
     if portkey_key.startswith("dummy"):
         # Fallback: simulate streaming for local dev / tests
-        words = f"[simulated stream response for: {prompt[:50]}]".split()
+        from app.router.model_router import _generate_contextual_response  # noqa: PLC0415
+        words = _generate_contextual_response(prompt).split()
         for word in words:
             yield word + " "
             await asyncio.sleep(0)

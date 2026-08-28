@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ControlPlane.ai — Enterprise AI Proxy Gateway</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">ControlPlane<span style="color: var(--accent-cyan)">.ai</span></div>
+          <span class="brand-badge">Gateway v0.1</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a class="nav-item active" data-tab="playground" href="#playground">
+          <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Interactive Studio
+        </a>
+        <a class="nav-item" data-tab="policy" href="#policy">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Policy Studio
+        </a>
+        <a class="nav-item" data-tab="telemetry" href="#telemetry">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          Live Telemetry
+        </a>
+        <a class="nav-item" data-tab="redteam" href="#redteam">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          Red-Team Hub
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="gateway-status-pill">
+          <div class="status-indicator"></div>
+          <span id="gateway-status-text" style="color: var(--text-secondary); font-weight: 500;">Gateway Online</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-wrapper">
+      
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-title-group">
+          <h1>Security Bouncer & Traffic Cop</h1>
+          <p>Deterministic 5-Stage Safety Pipeline & Smart Routing</p>
+        </div>
+
+        <div class="header-actions">
+          <div class="profile-selector-group">
+            <label for="profile-select">Active Profile</label>
+            <select id="profile-select" class="profile-select">
+              <option value="customer_chatbot">CUSTOMER CHATBOT</option>
+              <option value="internal_copilot">INTERNAL COPILOT</option>
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <!-- Views Container -->
+      <div class="view-container">
+
+        <!-- ===================================================================
+             TAB 1: Interactive Studio & Playground
+             =================================================================== -->
+        <section id="tab-playground" class="tab-pane active">
+          
+          <!-- Presets -->
+          <div class="presets-bar" id="presets-container"></div>
+
+          <!-- Prompt & Output Grid -->
+          <div class="playground-grid">
+            
+            <!-- Left: Prompt Editor -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  Request Input
+                </div>
+                <div class="mode-toggle-group">
+                  <button type="button" class="mode-btn active" id="mode-standard">POST /v1/chat</button>
+                  <button type="button" class="mode-btn" id="mode-stream">SSE Stream</button>
+                </div>
+              </div>
+
+              <div class="prompt-box">
+                <textarea id="prompt-input" class="prompt-textarea" placeholder="Type a user prompt or select a preset scenario above..."></textarea>
+              </div>
+
+              <div class="prompt-toolbar">
+                <span style="font-size: 0.75rem; color: var(--text-muted);">P1 Toxicity &bull; P2 PII/GLiNER &bull; P3 Ambiguity</span>
+                <button type="button" class="btn-primary" id="btn-execute">
+                  <span>🚀</span> Run Gateway Pipeline
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Response & Streaming Terminal -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                  Gateway Output Delivery
+                </div>
+              </div>
+
+              <!-- Standard Output -->
+              <div id="standard-output-panel">
+                <div class="code-viewer-box" id="standard-response-content" style="min-height: 180px;">
+                  [Ready. Click 'Run Gateway Pipeline' or pick a scenario above]
+                </div>
+              </div>
+
+              <!-- Streaming SSE Terminal -->
+              <div id="streaming-terminal-panel" style="display: none;">
+                <div class="streaming-terminal" id="streaming-terminal-body">
+                  <div class="stream-frame">[SSE STREAM READY]</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 5-Stage Flowchart Visualizer -->
+          <div class="pipeline-flow-container">
+            <div class="pipeline-header">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                Deterministic 5-Stage Safety Pipeline
+              </div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">Phase 3 Engine Active</span>
+            </div>
+
+            <div class="pipeline-stages-grid">
+              
+              <!-- Stage 0: Semantic Cache -->
+              <div class="stage-node idle" id="stage-0">
+                <div class="stage-top">
+                  <span class="stage-num">Stage 0</span>
+                  <span class="stage-badge badge">READY</span>
+                </div>
+                <div class="stage-name">Semantic Cache</div>
+                <div class="stage-metrics">Waiting for query...</div>
+              </div>
+
+              <!-- Stage 1: Micro-Judges -->
+              <div class="stage-node idle" id="stage-1">
+                <div class="stage-top">
+                  <span class="stage-num">Stage 1</span>
+                  <span class="stage-badge badge">READY</span>
+                </div>
+                <div class="stage-name">Micro-Judges (P1/P2/P3)</div>
+                <div class="stage-metrics">Toxicity, PII, Ambiguity</div>
+              </div>
+
+              <!-- Stage 2: Model Router -->
+              <div class="stage-node idle" id="stage-2">
+                <div class="stage-top">
+                  <span class="stage-num">Stage 2</span>
+                  <span class="stage-badge badge">READY</span>
+                </div>
+                <div class="stage-name">Model Router</div>
+                <div class="stage-metrics">RouteLLM & Portkey</div>
+              </div>
+
+              <!-- Stage 3: Groundedness & NLI -->
+              <div class="stage-node idle" id="stage-3">
+                <div class="stage-top">
+                  <span class="stage-num">Stage 3</span>
+                  <span class="stage-badge badge">READY</span>
+                </div>
+                <div class="stage-name">Groundedness & NLI</div>
+                <div class="stage-metrics">FAISS & DeBERTa NLI</div>
+              </div>
+
+              <!-- Stage 4: Triage Gateway -->
+              <div class="stage-node idle" id="stage-4">
+                <div class="stage-top">
+                  <span class="stage-num">Stage 4</span>
+                  <span class="stage-badge badge">READY</span>
+                </div>
+                <div class="stage-name">Action Triage</div>
+                <div class="stage-metrics">Priority 0-4 Decision</div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Data Flow & Redaction Inspector -->
+          <div class="glass-card">
+            <div class="transform-tabs-header">
+              <button type="button" class="transform-tab-btn active" data-view="raw">1. Raw User Prompt</button>
+              <button type="button" class="transform-tab-btn" data-view="masked">2. Masked Prompt sent to LLM</button>
+              <button type="button" class="transform-tab-btn" data-view="raw-llm">3. Raw LLM Output</button>
+              <button type="button" class="transform-tab-btn" data-view="final">4. Restored Final Output</button>
+            </div>
+
+            <div class="transform-view-pane" id="view-raw">
+              <div class="code-viewer-box" id="raw-prompt-view">No prompt submitted yet.</div>
+            </div>
+            <div class="transform-view-pane" id="view-masked" style="display: none;">
+              <div class="code-viewer-box" id="masked-prompt-view">No prompt submitted yet.</div>
+            </div>
+            <div class="transform-view-pane" id="view-raw-llm" style="display: none;">
+              <div class="code-viewer-box" id="raw-llm-view">No prompt submitted yet.</div>
+            </div>
+            <div class="transform-view-pane" id="view-final" style="display: none;">
+              <div class="code-viewer-box" id="final-response-view">No prompt submitted yet.</div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ===================================================================
+             TAB 2: Policy Configuration Studio
+             =================================================================== -->
+        <section id="tab-policy" class="tab-pane">
+          <div class="policy-grid">
+            
+            <!-- Left: Policy Editor Controls -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  Profile Configuration
+                </div>
+                <select id="policy-profile-selector" class="profile-select" style="background: var(--bg-secondary); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                  <option value="customer_chatbot">customer_chatbot</option>
+                  <option value="internal_copilot">internal_copilot</option>
+                </select>
+              </div>
+
+              <!-- Cache Toggle & Sliders -->
+              <div class="toggle-switch">
+                <div>
+                  <strong>Semantic Cache</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Vector cache exact & fuzzy query responses</div>
+                </div>
+                <input type="checkbox" id="policy-cache-enabled" class="switch-input" checked>
+              </div>
+
+              <div class="form-group" style="margin-top: 14px;">
+                <label>Cache TTL (seconds)</label>
+                <div class="range-slider-group">
+                  <input type="range" id="policy-cache-ttl" class="range-slider" min="30" max="3600" step="30" value="300">
+                  <span class="range-val-badge" id="badge-cache-ttl">300s</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Cache Similarity Threshold</label>
+                <div class="range-slider-group">
+                  <input type="range" id="policy-cache-sim" class="range-slider" min="0.50" max="0.99" step="0.01" value="0.92">
+                  <span class="range-val-badge" id="badge-cache-sim">0.92</span>
+                </div>
+              </div>
+
+              <!-- Groundedness & Complexity -->
+              <div class="form-group">
+                <label>Groundedness Pass Threshold</label>
+                <div class="range-slider-group">
+                  <input type="range" id="policy-groundedness" class="range-slider" min="0.50" max="0.99" step="0.01" value="0.85">
+                  <span class="range-val-badge" id="badge-groundedness">0.85</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>RouteLLM Complexity Threshold (SLM vs Frontier)</label>
+                <div class="range-slider-group">
+                  <input type="range" id="policy-complexity" class="range-slider" min="0.10" max="0.90" step="0.05" value="0.50">
+                  <span class="range-val-badge" id="badge-complexity">0.50</span>
+                </div>
+              </div>
+
+              <!-- GLiNER Custom Terms -->
+              <div class="form-group">
+                <label>GLiNER Custom Entity Terms (Press Enter)</label>
+                <div class="tag-input-container" id="custom-entity-tags">
+                  <input type="text" class="tag-text-input" id="custom-entity-tag-input" placeholder="Add corporate term...">
+                </div>
+              </div>
+
+              <!-- Escalation & Oversight -->
+              <div class="toggle-switch">
+                <div>
+                  <strong>Human Escalation</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Route uncertain answers to operator queue</div>
+                </div>
+                <input type="checkbox" id="policy-human-escalation" class="switch-input" checked>
+              </div>
+
+              <div class="toggle-switch">
+                <div>
+                  <strong>Worldsense Multi-Turn Oversight</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Detect long-horizon escalation chains</div>
+                </div>
+                <input type="checkbox" id="policy-agentic-oversight" class="switch-input" checked>
+              </div>
+
+              <button type="button" class="btn-primary" id="btn-save-policy" style="width: 100%; margin-top: 20px; justify-content: center;">
+                💾 Save Policy & Trigger Hot-Reload
+              </button>
+            </div>
+
+            <!-- Right: Live Policy JSON / YAML Preview -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                  Live Policy Definition
+                </div>
+              </div>
+              <div class="code-viewer-box" id="policy-yaml-preview" style="min-height: 440px;">
+                Loading policy definition...
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             TAB 3: Live Telemetry & Audit Stream
+             =================================================================== -->
+        <section id="tab-telemetry" class="tab-pane">
+          
+          <!-- Metrics Overview Cards -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+            <div class="glass-card" style="padding: 16px;">
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">Total Requests</div>
+              <div style="font-size: 1.6rem; font-weight: 800; color: #fff; margin-top: 4px;" id="metric-total-requests">42</div>
+            </div>
+            <div class="glass-card" style="padding: 16px;">
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">Cache Hit Ratio</div>
+              <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-cyan); margin-top: 4px;" id="metric-cache-hits">38.5%</div>
+            </div>
+            <div class="glass-card" style="padding: 16px;">
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">Average Latency</div>
+              <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-emerald); margin-top: 4px;" id="metric-avg-latency">14 ms</div>
+            </div>
+            <div class="glass-card" style="padding: 16px;">
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">Threats Blocked</div>
+              <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-crimson); margin-top: 4px;" id="metric-blocked-count">3</div>
+            </div>
+          </div>
+
+          <!-- Telemetry Table -->
+          <div class="glass-card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Live Gateway Audit Trail
+              </div>
+              <button type="button" class="preset-chip" onclick="refreshTelemetry()">🔄 Refresh</button>
+            </div>
+
+            <div class="telemetry-table-wrapper">
+              <table class="telemetry-table">
+                <thead>
+                  <tr>
+                    <th>Request ID</th>
+                    <th>Profile</th>
+                    <th>PII Scanned</th>
+                    <th>NLI Label</th>
+                    <th>Cache Hit</th>
+                    <th>Latency</th>
+                    <th>Triage Outcome</th>
+                  </tr>
+                </thead>
+                <tbody id="telemetry-table-body">
+                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading telemetry stream...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             TAB 4: Red-Team Security Hub
+             =================================================================== -->
+        <section id="tab-redteam" class="tab-pane">
+          <div class="redteam-grid">
+            
+            <!-- Left: Attack Matrix -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  Adversarial Attack Matrix
+                </div>
+                <span class="badge badge-pass">MCP Server: Port 9200</span>
+              </div>
+
+              <div class="attack-category-card">
+                <div class="attack-info">
+                  <h4>1. Multi-Turn Jailbreak Suite</h4>
+                  <p>DAN modes, persona hijacking, filter evasion</p>
+                </div>
+                <span class="badge badge-pass">100% Blocked</span>
+              </div>
+
+              <div class="attack-category-card">
+                <div class="attack-info">
+                  <h4>2. Direct Prompt Injection</h4>
+                  <p>Instruction overrides, system prompt exfiltration</p>
+                </div>
+                <span class="badge badge-pass">100% Blocked</span>
+              </div>
+
+              <div class="attack-category-card">
+                <div class="attack-info">
+                  <h4>3. Toxicity Escalation Probes</h4>
+                  <p>Gradual multi-turn hate speech & harm escalation</p>
+                </div>
+                <span class="badge badge-pass">100% Blocked</span>
+              </div>
+
+              <div class="attack-category-card">
+                <div class="attack-info">
+                  <h4>4. PII Extraction Attacks</h4>
+                  <p>Probing LLM memory for user SSNs & corporate secrets</p>
+                </div>
+                <span class="badge badge-pass">100% Masked</span>
+              </div>
+
+              <div class="attack-category-card">
+                <div class="attack-info">
+                  <h4>5. Competitor Mention Injection</h4>
+                  <p>Unauthorized corporate promotion suppression</p>
+                </div>
+                <span class="badge badge-pass">100% Filtered</span>
+              </div>
+
+              <button type="button" class="btn-danger" id="btn-run-redteam" style="width: 100%; margin-top: 12px; justify-content: center;">
+                ⚡ Launch Automated Adversarial Probe Suite
+              </button>
+            </div>
+
+            <!-- Right: Red-Team Console Logs -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                  Redteam Execution Log
+                </div>
+              </div>
+              <div class="code-viewer-box" id="redteam-console" style="min-height: 380px; color: #38bdf8;">
+                <p>System ready. Click 'Launch Automated Adversarial Probe Suite' to evaluate gateway resilience across all 5 threat vectors.</p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

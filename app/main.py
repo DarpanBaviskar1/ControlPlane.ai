@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncIterator, Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -372,8 +372,36 @@ async def validation_exception_handler(
 
 
 # ---------------------------------------------------------------------------
-# Routers
+# Routers & Endpoints
 # ---------------------------------------------------------------------------
+
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+_STATIC_DIR = Path(__file__).parent / "static"
+if _STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/dashboard", include_in_schema=False)
+async def serve_dashboard() -> FileResponse:
+    """Serve the ControlPlane.ai Command Center UI."""
+    index_path = _STATIC_DIR / "index.html"
+    return FileResponse(str(index_path))
+
+
+@app.get("/v1/profiles", tags=["Policy"])
+async def get_profiles(request: Request) -> dict[str, Any]:
+    """Return all currently loaded policy profiles."""
+    loader = getattr(request.app.state, "policy_loader", None)
+    if loader is not None:
+        profiles = await loader.get_all_profiles()
+        return {name: p.model_dump() for name, p in profiles.items()}
+    from app.policy.defaults import BUILT_IN_PROFILES
+    return {name: p.model_dump() for name, p in BUILT_IN_PROFILES.items()}
+
 
 app.include_router(chat_router)
 app.include_router(streaming_router)
