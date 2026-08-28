@@ -55,8 +55,10 @@ print(f"[redteam-hook] Policy file saved: {saved_file}")
 print(f"[redteam-hook] Triggering adversarial test suite against {REDTEAM_ENDPOINT}")
 
 # ---------------------------------------------------------------------------
-# Call the redteam endpoint
+# MCP health check (Req. 5.11)
 # ---------------------------------------------------------------------------
+MCP_HEALTH_URL = os.getenv("REDTEAM_MCP_URL", "http://localhost:9200") + "/health"
+
 try:
     import httpx  # available in the project venv
 except ImportError:
@@ -66,6 +68,27 @@ except ImportError:
     )
     sys.exit(1)
 
+try:
+    with httpx.Client(timeout=2.0) as _mcp_client:
+        _mcp_resp = _mcp_client.get(MCP_HEALTH_URL)
+        if _mcp_resp.status_code == 200:
+            print(f"[redteam-hook] MCP server healthy at {MCP_HEALTH_URL}")
+        else:
+            print(
+                f"[redteam-hook] REDTEAM_MCP_UNAVAILABLE: MCP health check returned "
+                f"{_mcp_resp.status_code}",
+                file=sys.stderr,
+            )
+except Exception as _mcp_exc:
+    print(
+        f"[redteam-hook] REDTEAM_MCP_UNAVAILABLE: MCP health check failed — {_mcp_exc}",
+        file=sys.stderr,
+    )
+# Always proceed to call the Gateway regardless of MCP health result (Req. 5.11)
+
+# ---------------------------------------------------------------------------
+# Call the redteam endpoint
+# ---------------------------------------------------------------------------
 start = time.monotonic()
 try:
     with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
