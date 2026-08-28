@@ -31,12 +31,21 @@ TriageState = Literal[
 # ---------------------------------------------------------------------------
 
 
+class ConversationTurn(BaseModel):
+    """One turn of conversation history for multi-turn agentic oversight (Req. 12.7)."""
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=32_768)
+
+
 class ChatRequest(BaseModel):
     """Inbound request body for POST /v1/chat."""
 
     prompt: str = Field(min_length=1, max_length=32_768)
     use_case_profile: str = Field(min_length=1, max_length=256)
     metadata: dict[str, str] = Field(default_factory=dict)
+    # Optional multi-turn history for Worldsense agentic oversight (Req. 12.7)
+    conversation_history: list[ConversationTurn] = Field(default_factory=list, max_length=50)
 
 
 class ChatResponse(BaseModel):
@@ -73,6 +82,16 @@ class UseCaseProfile(BaseModel):
     inspection_timeout_ms: int = Field(ge=1, le=60_000)
     pii_masking_enabled: bool = True
     human_escalation_enabled: bool = True
+    # Worldsense agentic oversight (Req. 12.1, 12.8)
+    agentic_oversight_enabled: bool = False
+    # Obot tool governance (Req. 11.5)
+    allowed_tools: list[str] = Field(default_factory=list)
+    blocked_tools: list[str] = Field(default_factory=list)
+    max_tool_calls_per_request: int = Field(ge=1, default=10)
+    # Feedback loop sensitivity floor — minimum value a threshold can be reduced to (Req. 6.8)
+    sensitivity_floor: float = Field(ge=0.0, le=1.0, default=0.3)
+    # Sensitivity decrement step applied on each human override (Req. 6.8)
+    sensitivity_decrement: float = Field(ge=0.0, le=0.5, default=0.02)
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +122,34 @@ class P2Verdict:
     pii_count: int
     masked_prompt: str | None  # populated if pii_count > 0
     placeholder_map: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class GuardrailsVerdict:
+    """Output of the Guardrails AI output validation chain (Req. 2.11-13)."""
+
+    passed: bool
+    # on_fail action that fired, or None if all validators passed
+    action: Literal["exception", "filter", "fix"] | None = None
+    # Name of the validator that triggered the action
+    triggered_validator: str | None = None
+    # Fixed output when action == 'fix'; None otherwise
+    fixed_output: str | None = None
+
+
+# Worldsense oversight verdict literals (Req. 12.2)
+WorldsenseVerdictLiteral = Literal["SAFE", "RISK_DETECTED", "CONSEQUENCE_ALERT"]
+
+
+@dataclass
+class WorldsenseVerdict:
+    """Output of the Worldsense multi-turn agentic oversight stage (Req. 12)."""
+
+    verdict: WorldsenseVerdictLiteral
+    # Turn index where risk was first detected (for RISK_DETECTED / CONSEQUENCE_ALERT)
+    risk_turn_index: int | None = None
+    # Human-readable description of the detected risk or consequence
+    risk_description: str | None = None
 
 
 @dataclass
@@ -145,16 +192,25 @@ class RequestContext:
     profile: UseCaseProfile
     original_prompt: str
     working_prompt: str  # may be masked by P2
+    conversation_history: list[ConversationTurn] = field(default_factory=list)
     placeholder_map: dict[str, str] = field(default_factory=dict)
     p1_verdict: P1Verdict | None = None
     p2_verdict: P2Verdict | None = None
     p3_verdict: Literal["CLEAR", "AMBIGUOUS"] | None = None
+    guardrails_verdict: GuardrailsVerdict | None = None
+    worldsense_verdict: WorldsenseVerdict | None = None
+    # Obot tool call counter (Req. 11.6)
+    tool_call_count: int = 0
     routing_decision: RoutingDecision | None = None
     llm_response: str | None = None
     audit_result: AuditResult | None = None
     triage_result: TriageResult | None = None
     pipeline_start_ts: float = 0.0
     upstream_triage_state: TriageState | None = None
+    # Langfuse trace ID equals the request_id (Req. 6.3)
+    langfuse_trace_id: str | None = None
+    # Red team session marker (Req. 10.8)
+    redteam_session_id: str | None = None
 
 
 # ---------------------------------------------------------------------------

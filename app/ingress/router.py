@@ -122,10 +122,23 @@ async def handle_chat(
         profile=profile,
         original_prompt=body.prompt,
         working_prompt=body.prompt,
+        conversation_history=body.conversation_history,
         pipeline_start_ts=time.monotonic(),
     )
 
     telemetry = getattr(request.app.state, "telemetry_logger", None)
+    langfuse_tracer = getattr(request.app.state, "langfuse_tracer", None)
+
+    if langfuse_tracer:
+        langfuse_tracer.start_trace(
+            request_id=request_id,
+            use_case_profile=profile.name,
+            metadata={
+                "original_prompt": body.prompt,
+                "metadata": body.metadata,
+                **(body.metadata.get("redteam_session_id") and {"redteam_session_id": body.metadata["redteam_session_id"]} or {})
+            },
+        )
 
     try:
         # ------------------------------------------------------------------
@@ -168,6 +181,16 @@ async def handle_chat(
         if telemetry is not None and ctx.triage_result is not None:
             latency_for_tel = int((time.monotonic() - ctx.pipeline_start_ts) * 1000)
             await _record_telemetry(telemetry, ctx, latency_for_tel)
+        
+        # Flush Langfuse trace
+        if langfuse_tracer:
+            if ctx.triage_result:
+                langfuse_tracer.set_metadata(
+                    request_id,
+                    triage_state=ctx.triage_result.triage_state,
+                    blocking_reason=ctx.triage_result.blocking_reason
+                )
+            langfuse_tracer.flush_trace(request_id)
 
     latency_ms = int((time.monotonic() - ctx.pipeline_start_ts) * 1000)
     return _build_response(ctx, latency_ms)
