@@ -92,6 +92,12 @@ class UseCaseProfile(BaseModel):
     sensitivity_floor: float = Field(ge=0.0, le=1.0, default=0.3)
     # Sensitivity decrement step applied on each human override (Req. 6.8)
     sensitivity_decrement: float = Field(ge=0.0, le=0.5, default=0.02)
+    # Phase 3 — Semantic Cache (Req. 1.1)
+    cache_enabled: bool = False
+    cache_ttl_seconds: int = Field(ge=1, default=300)
+    cache_similarity_threshold: float = Field(ge=0.0, le=1.0, default=0.92)
+    # Phase 3 — GLiNER custom entity masking (Req. 3.1)
+    custom_entity_terms: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -164,8 +170,10 @@ class RoutingDecision:
 @dataclass
 class AuditResult:
     groundedness_score: float  # [0.0, 1.0]
-    technique: str  # "embedding_similarity"
+    technique: str  # "embedding_similarity" or "nli_embedding_similarity"
     is_unverified: bool
+    # Phase 3 — NLI groundedness auditor (Req. 2.1)
+    nli_label: Literal["ENTAILMENT", "NEUTRAL", "CONTRADICTION"] | None = None
 
 
 @dataclass
@@ -239,6 +247,10 @@ class TelemetryRecord(BaseModel):
     response_token_count: int | None = None
     latency_ms: int
     pii_masking_bypassed: bool = False
+    # Phase 3 — Semantic Cache telemetry (Req. 1.2, 6.6)
+    cache_hit: bool = False
+    # Phase 3 — NLI groundedness telemetry (Req. 2.2, 6.6)
+    nli_label: Literal["ENTAILMENT", "NEUTRAL", "CONTRADICTION"] | None = None
 
 
 class OverrideRecord(BaseModel):

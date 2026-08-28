@@ -1,0 +1,183 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add Phase 3 fields to `UseCaseProfile`, `TelemetryRecord`, and `AuditResult` in `app/models.py`": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593150
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920605549
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920689197
+      }
+    ],
+    "2.1 Create `app/router/semantic_cache.py` with `CacheLookupResult` dataclass and `SemanticCache` class": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593267
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920694292
+      }
+    ],
+    "3. Add `CACHE_SIMILARITY_THRESHOLD` to `app/config.py`": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593379
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920720780
+      }
+    ],
+    "4.1 Create `app/groundedness/nli_scorer.py` with `NLIScorer` class and `NLILabel` type": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593491
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920698524
+      }
+    ],
+    "5.1 Modify `app/groundedness/auditor.py` to accept an optional `nli_scorer` parameter and run the two-stage pipeline": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593576
+      }
+    ],
+    "6.1 Modify `app/triage/gateway.py` to add `nli_label` parameter and Priority 0 CONTRADICTION check": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593667
+      }
+    ],
+    "7.1 Create `app/judges/gliner_masker.py` with `GLiNERMasker` class": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593778
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920702515
+      }
+    ],
+    "8.1 Modify `app/judges/pii_masking.py` to wire in `GLiNERMasker` as Tier 1.5": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593860
+      }
+    ],
+    "9.1 Create `app/ingress/sliding_window.py` with `SlidingWindow` class": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920593973
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920706482
+      }
+    ],
+    "10.1 Create `app/ingress/streaming_router.py` with `POST /v1/chat/stream` endpoint": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594068
+      }
+    ],
+    "11. Checkpoint — Core components complete": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594153
+      }
+    ],
+    "12.1 Create `mcp_servers/redteam/server.py` as an isolated FastAPI application": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594236
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920710505
+      }
+    ],
+    "12.2 Create `mcp_servers/redteam/requirements.txt` and `mcp_servers/redteam/mcp.json`": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594329
+      },
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920715229
+      }
+    ],
+    "13.1 Modify `app/redteam/runner.py` to add MCP-first delegation with in-process fallback": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594431
+      }
+    ],
+    "14.1 Modify `.kiro/hooks/redteam_trigger.py` to health-check MCP before triggering": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594530
+      }
+    ],
+    "15.1 Add lifespan Steps 7–10 to `app/main.py`": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594651
+      }
+    ],
+    "15.2 Wire SemanticCache lookup and store into `run_pipeline()` in `app/main.py`": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594741
+      }
+    ],
+    "16. Final checkpoint — All tests pass": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920594833
+      }
+    ],
+    "1. Extend data models with Phase 3 fields": [
+      {
+        "executionId": "ac00edb2-bf6c-4ff9-9281-8a0e8f0d25a7",
+        "chatSessionId": "sess_24a84a9b-54cd-4261-a893-7f258850b10b",
+        "timestamp": 1787920689309
+      }
+    ]
+  }
+}

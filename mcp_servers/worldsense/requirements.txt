@@ -1,0 +1,6 @@
+# Minimal isolated requirements for the Worldsense MCP server.
+# Install in a dedicated venv: python -m venv .venv-worldsense && pip install -r requirements.txt
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.7.1
+# worldsense        # uncomment once available on PyPI / install from source

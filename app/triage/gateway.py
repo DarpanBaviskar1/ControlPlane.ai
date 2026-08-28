@@ -29,12 +29,23 @@ def evaluate(
     p3_clarity: Literal["CLEAR", "AMBIGUOUS"],
     profile: UseCaseProfile,
     response_content: str | None = None,
+    nli_label: Literal["ENTAILMENT", "NEUTRAL", "CONTRADICTION"] | None = None,
 ) -> TriageResult:
     """Apply the four-state priority matrix and return a TriageResult.
 
     States are evaluated in strict priority order; the first matching rule wins.
     """
     threshold = profile.groundedness_pass_threshold
+
+    # ------------------------------------------------------------------
+    # Priority 0: NLI CONTRADICTION hard-block (Req. 2.4)
+    # ------------------------------------------------------------------
+    if nli_label == "CONTRADICTION":
+        return TriageResult(
+            triage_state="HARD_BLOCK",
+            blocking_reason="NLI_CONTRADICTION",
+            response_content=None,
+        )
 
     # ------------------------------------------------------------------
     # Priority 1: HARD_BLOCK

@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Redteam Adversarial Suite on Policy Save",
+      "trigger": "PostFileSave",
+      "description": "Whenever a YAML/JSON policy file is saved, run the adversarial redteam test suite against the redteam router to verify the new policy didn't introduce vulnerabilities.",
+      "matcher": "\\.(yaml|yml|json)$",
+      "action": {
+        "type": "command",
+        "command": "python .kiro/hooks/redteam_trigger.py",
+        "timeout": 120
+      }
+    }
+  ]
+}

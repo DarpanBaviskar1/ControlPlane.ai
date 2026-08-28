@@ -1,17 +1,23 @@
-"""PII Masking Engine.
+"""PII Masking Engine — two-tier graceful degradation.
 
-Wraps the LLM Guard Anonymize scanner (or a regex-based fallback when LLM
-Guard is not installed) and maintains a per-request placeholder mapping.
+Tier 1 (primary):  LLM Guard Anonymize scanner (NLP-based, Presidio under the hood).
+                   Highest accuracy; requires llm-guard to be installed.
 
-Responsibilities:
-- mask(prompt, request_id)   → (masked_prompt, placeholder_map)
-- unmask(masked, request_id) → original prompt
-- discard_mapping(request_id)→ clears the per-request map
-- run_startup_validation()   → round-trip fidelity check on 5 synthetic prompts
+Tier 2 (fallback): RegexOnlyMasker — compiled-regex scanner that is always
+                   available, zero extra dependencies, ~1 ms per call.
 
-The engine is healthy (is_healthy=True) after a successful startup validation
-pass and unhealthy (is_healthy=False) after any failure. The ingress handler
-returns HTTP 503 while the engine is unhealthy.
+Startup behaviour (Item 5):
+  - Engine always starts with whatever tier is available.
+  - run_startup_validation() runs the 5 synthetic prompts through a full
+    mask → unmask round-trip.
+  - If the primary (NLP) scanner fails validation it is downgraded to the
+    regex-only tier and a high-priority MASKING_DEGRADED_TO_REGEX alert is
+    emitted to the Telemetry Logger.  The gateway stays **online** (is_healthy=True).
+  - Only if the regex tier also fails validation does the engine set
+    is_healthy=False and the ingress handler return HTTP 503.
+
+This keeps the gateway available under NLP-model load failures while still
+maintaining a baseline of safety through regex matching.
 """
 
 from __future__ import annotations
@@ -20,47 +26,41 @@ import asyncio
 import logging
 import re
 import threading
-from typing import TYPE_CHECKING
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Optional LLM Guard import
+# Optional LLM Guard import (Tier 1)
 # ---------------------------------------------------------------------------
-
 try:
     from llm_guard.input_scanners import Anonymize  # type: ignore[import]
-    from llm_guard.input_scanners.anonymize_helpers import ANONYMIZE_PATTERNS  # type: ignore[import]
-
     _HAS_LLM_GUARD = True
 except ImportError:
     _HAS_LLM_GUARD = False
     Anonymize = None  # type: ignore[assignment,misc]
 
 # ---------------------------------------------------------------------------
-# Regex-based fallback scanner (used when llm-guard is not installed)
+# GLiNER Tier 1.5 (Req. 3.2, 3.3)
 # ---------------------------------------------------------------------------
+from app.judges.gliner_masker import GLiNERMasker, _HAS_GLINER  # noqa: E402
 
-# Ordered list of (entity_type, compiled_pattern) used by the fallback scanner.
-# Patterns are intentionally simple; production uses LLM Guard / Presidio.
+# ---------------------------------------------------------------------------
+# Regex patterns shared by both the fallback scanner and the placeholder map
+# builder.  Extend here to add new entity types — see the performance-budget
+# steering file before adding patterns.
+# ---------------------------------------------------------------------------
 _FALLBACK_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    # SSN: 123-45-6789
-    ("SSN", re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
-    # Email
-    ("EMAIL_ADDRESS", re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")),
-    # US phone: various formats
-    (
-        "PHONE_NUMBER",
-        re.compile(r"\b(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}\b"),
-    ),
-    # Credit card (naive 16-digit groups)
-    (
-        "CREDIT_CARD",
-        re.compile(r"\b(?:\d{4}[\s\-]){3}\d{4}\b"),
-    ),
+    ("SSN",          re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
+    ("EMAIL_ADDRESS", re.compile(
+        r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b"
+    )),
+    ("PHONE_NUMBER",  re.compile(
+        r"\b(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}\b"
+    )),
+    ("CREDIT_CARD",   re.compile(r"\b(?:\d{4}[\s\-]){3}\d{4}\b")),
 ]
 
-# Whitespace normalisation for round-trip fidelity checks
 _WS_RE = re.compile(r"\s+")
 
 
@@ -68,76 +68,116 @@ def _normalise(s: str) -> str:
     return _WS_RE.sub(" ", s).strip()
 
 
-class _FallbackScanner:
-    """Simple regex-based PII scanner used when llm-guard is unavailable.
+# ---------------------------------------------------------------------------
+# Tier 2: RegexOnlyMasker
+# ---------------------------------------------------------------------------
 
-    Replaces matches in document order (earliest position first) so that the
-    placeholder → original mapping stays position-consistent.
+class RegexOnlyMasker:
+    """Pure-regex PII scanner — always available, zero extra dependencies.
+
+    Processes all pattern matches in document order (earliest position first)
+    so the placeholder → original mapping is position-consistent.
+
+    Per the performance-budget steering file, scan() must run in < 30 ms
+    on worst-case 32 768-char input.  Do not add NLP calls here.
     """
 
-    def scan(self, prompt: str) -> tuple[str, bool, float]:
-        """Returns (sanitised_prompt, is_valid, risk_score).
+    name: str = "regex"
 
-        is_valid=False means PII was found (matches LLM Guard's semantics).
+    def scan(self, prompt: str) -> tuple[str, bool, float]:
+        """Return (masked_prompt, is_valid, risk_score).
+
+        is_valid=False signals PII was detected (mirrors LLM Guard semantics).
         """
-        # Collect all matches across all patterns, sorted by start position
-        all_matches: list[tuple[int, int, str, str]] = []  # (start, end, entity_type, value)
-        entity_counts: dict[str, int] = {}
+        all_matches: list[tuple[int, int, str]] = []
 
         for entity_type, pattern in _FALLBACK_PATTERNS:
-            for match in pattern.finditer(prompt):
-                all_matches.append((match.start(), match.end(), entity_type, match.group(0)))
+            for m in pattern.finditer(prompt):
+                all_matches.append((m.start(), m.end(), entity_type))
 
         if not all_matches:
             return prompt, True, 0.0
 
-        # Sort by start position to process left-to-right
+        # Sort by start position; remove overlaps (keep earliest)
         all_matches.sort(key=lambda x: x[0])
-
-        # Remove overlapping matches (keep first / earliest)
-        deduplicated: list[tuple[int, int, str, str]] = []
+        deduped: list[tuple[int, int, str]] = []
         last_end = -1
-        for start, end, etype, value in all_matches:
+        for start, end, etype in all_matches:
             if start >= last_end:
-                deduplicated.append((start, end, etype, value))
+                deduped.append((start, end, etype))
                 last_end = end
 
-        # Build masked string by replacing in reverse order (to preserve indices)
-        masked = prompt
-        for start, end, entity_type, _ in reversed(deduplicated):
-            entity_counts[entity_type] = entity_counts.get(entity_type, 0) + 1
-            placeholder = f"[{entity_type}_REDACTED_{entity_counts[entity_type]}]"
-            masked = masked[:start] + placeholder + masked[end:]
-
-        # Re-count in forward order for consistent numbering
-        entity_counts_fwd: dict[str, int] = {}
+        # Build masked string in forward order
+        counts: dict[str, int] = {}
         parts: list[str] = []
         prev = 0
-        for start, end, entity_type, _ in deduplicated:
-            entity_counts_fwd[entity_type] = entity_counts_fwd.get(entity_type, 0) + 1
-            placeholder = f"[{entity_type}_REDACTED_{entity_counts_fwd[entity_type]}]"
+        for start, end, etype in deduped:
+            counts[etype] = counts.get(etype, 0) + 1
             parts.append(prompt[prev:start])
-            parts.append(placeholder)
+            parts.append(f"[{etype}_REDACTED_{counts[etype]}]")
             prev = end
         parts.append(prompt[prev:])
-        masked = "".join(parts)
-
-        return masked, False, 1.0
+        return "".join(parts), False, 1.0
 
 
 # ---------------------------------------------------------------------------
-# PIIMaskingEngine
+# Tier 1: NLPMasker (wraps LLM Guard Anonymize)
 # ---------------------------------------------------------------------------
 
+class NLPMasker:
+    """LLM Guard Anonymize-backed scanner.  Loaded once at startup."""
+
+    name: str = "nlp"
+
+    def __init__(self) -> None:
+        self._inner = Anonymize(preamble="", allowed_names=[], hidden_names=[])
+
+    def scan(self, prompt: str) -> tuple[str, bool, float]:
+        return self._inner.scan(prompt)  # type: ignore[no-any-return]
+
+
+# ---------------------------------------------------------------------------
+# Placeholder map builder (used by both tiers)
+# ---------------------------------------------------------------------------
+
+_PLACEHOLDER_RE = re.compile(r"\[[A-Z_]+_REDACTED(?:_\d+)?\]")
+
+# Covers both standard PII placeholders AND GLiNER custom entity placeholders
+_ALL_PLACEHOLDER_RE = re.compile(r"\[(?:[A-Z_]+_REDACTED(?:_\d+)?|CUSTOM_ENTITY_REDACTED_\d+)\]")
+
+
+def _build_placeholder_map(original: str, masked: str) -> dict[str, str]:
+    """Reconstruct {placeholder: original_value} by aligning document-order spans."""
+    placeholders = _PLACEHOLDER_RE.findall(masked)
+    if not placeholders:
+        return {}
+
+    spans: list[tuple[int, str]] = []
+    for _, pattern in _FALLBACK_PATTERNS:
+        for m in pattern.finditer(original):
+            spans.append((m.start(), m.group(0)))
+    spans.sort(key=lambda x: x[0])
+
+    return {ph: orig for ph, (_, orig) in zip(placeholders, spans)}
+
+
+# ---------------------------------------------------------------------------
+# PIIMaskingEngine — public interface
+# ---------------------------------------------------------------------------
 
 class PIIMaskingEngine:
-    """Thread-safe PII masking engine with per-request placeholder maps.
+    """Two-tier PII masking engine with graceful NLP → regex degradation.
 
-    All public methods are synchronous so they can be called from both sync
-    and async contexts (the scanner's async path uses asyncio.to_thread).
+    Tier selection at startup:
+      1. NLPMasker (LLM Guard) if available.
+      2. RegexOnlyMasker as the always-available fallback.
+
+    Startup validation:
+      - If the NLP tier fails round-trip validation → downgrade to regex tier,
+        log MASKING_DEGRADED_TO_REGEX, keep is_healthy=True.
+      - If regex tier also fails → log MASKING_INTEGRITY_FAILURE, is_healthy=False.
     """
 
-    # Five synthetic prompts used by the startup validation suite
     _VALIDATION_PROMPTS: list[str] = [
         "My SSN is 123-45-6789 and I live at 10 Main St.",
         "Contact me at john.doe@example.com for details.",
@@ -146,134 +186,249 @@ class PIIMaskingEngine:
         "Name: Alice Smith, SSN: 987-65-4321, email: alice@corp.org",
     ]
 
-    def __init__(self) -> None:
-        # per-request placeholder maps: {request_id: {placeholder: original}}
+    def __init__(self, telemetry_logger: Any | None = None) -> None:
         self._maps: dict[str, dict[str, str]] = {}
         self._lock = threading.Lock()
-        self.is_healthy: bool = True  # optimistic; set False on validation failure
+        self.is_healthy: bool = True
+        self._telemetry_logger = telemetry_logger
+        self._gliner_degraded: bool = False
 
+        # Tier 1.5: GLiNER custom entity masker (Req. 3.2)
+        self._gliner_masker = GLiNERMasker()
+
+        # Select initial scanner tier
         if _HAS_LLM_GUARD:
-            # Load once; expensive model download happens here
-            self._scanner = Anonymize(preamble="", allowed_names=[], hidden_names=[])
+            try:
+                self._scanner: RegexOnlyMasker | NLPMasker = NLPMasker()
+                logger.info("PIIMaskingEngine: NLP tier (LLM Guard) loaded")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "PIIMaskingEngine: NLP tier failed to initialise (%s) — "
+                    "pre-loading regex tier", exc
+                )
+                self._scanner = RegexOnlyMasker()
         else:
-            logger.warning(
-                "llm-guard not installed; using regex fallback for PII detection"
-            )
-            self._scanner = _FallbackScanner()
+            logger.info("PIIMaskingEngine: llm-guard not installed — using regex tier")
+            self._scanner = RegexOnlyMasker()
 
     # ------------------------------------------------------------------
-    # mask
+    # Public interface
     # ------------------------------------------------------------------
 
-    def mask(self, prompt: str, request_id: str) -> tuple[str, dict[str, str]]:
+    @property
+    def active_tier(self) -> str:
+        return self._scanner.name
+
+    def mask(
+        self,
+        prompt: str,
+        request_id: str,
+        custom_entity_terms: list[str] | None = None,
+        gliner_model: object | None = None,
+    ) -> tuple[str, dict[str, str]]:
         """Replace PII tokens with typed placeholders.
 
-        Returns (masked_prompt, placeholder_map).  The placeholder_map maps
-        each placeholder back to the original PII value and is stored internally
-        keyed by request_id.
-        """
-        sanitised, is_valid, _ = self._scanner.scan(prompt)
+        Applies three tiers in order:
+          Tier 1:   NLPMasker (LLM Guard) or RegexOnlyMasker.
+          Tier 1.5: GLiNERMasker — optional custom entity masking (Req. 3.2–3.4).
+          Tier 2:   RegexOnlyMasker placeholders are already embedded in Tier 1.
 
-        # Build the reverse mapping: placeholder → original
-        placeholder_map: dict[str, str] = {}
-        if not is_valid:
-            placeholder_map = _build_placeholder_map(prompt, sanitised)
+        The combined ``placeholder_map`` covers all tiers so ``unmask()`` can
+        restore everything in a single pass.
+        """
+        # --- Tier 1: NLP / regex ---
+        sanitised, is_valid, _ = self._scanner.scan(prompt)
+        placeholder_map: dict[str, str] = (
+            _build_placeholder_map(prompt, sanitised) if not is_valid else {}
+        )
+
+        # --- Tier 1.5: GLiNER custom entity masking (Req. 3.4) ---
+        if (
+            _HAS_GLINER
+            and not self._gliner_degraded
+            and custom_entity_terms
+            and gliner_model is not None
+        ):
+            try:
+                gliner_masked, gliner_map = self._gliner_masker.scan_sync(
+                    sanitised, custom_entity_terms, gliner_model
+                )
+                sanitised = gliner_masked
+                placeholder_map.update(gliner_map)
+            except Exception as exc:  # noqa: BLE001 — Req. 3.8
+                logger.error(
+                    "GLINER_SCAN_ERROR for request %s: %s — GLiNER result skipped",
+                    request_id,
+                    exc,
+                )
 
         with self._lock:
             self._maps[request_id] = placeholder_map
-
         return sanitised, placeholder_map
 
-    # ------------------------------------------------------------------
-    # unmask
-    # ------------------------------------------------------------------
-
     def unmask(self, masked_prompt: str, request_id: str) -> str:
-        """Restore all placeholders using the stored per-request mapping."""
+        """Restore all placeholders (Tier 1, 1.5, and 2) using the stored per-request mapping."""
         with self._lock:
             placeholder_map = self._maps.get(request_id, {})
-
         result = masked_prompt
         for placeholder, original in placeholder_map.items():
             result = result.replace(placeholder, original)
         return result
 
-    # ------------------------------------------------------------------
-    # discard_mapping
-    # ------------------------------------------------------------------
-
     def discard_mapping(self, request_id: str) -> None:
-        """Remove the per-request placeholder map after response delivery."""
+        """Remove the per-request map after response delivery."""
         with self._lock:
             self._maps.pop(request_id, None)
 
     # ------------------------------------------------------------------
-    # Startup validation
+    # Startup validation — graceful degradation
     # ------------------------------------------------------------------
 
     async def run_startup_validation(self) -> bool:
-        """Round-trip fidelity check on five synthetic PII prompts.
+        """Round-trip fidelity check with two-tier graceful degradation.
 
-        Returns True if all prompts survive mask → unmask with byte-for-byte
-        identity after whitespace normalisation.  Sets is_healthy=False and
-        logs MASKING_INTEGRITY_FAILURE on any failure.
+        Returns True (and keeps is_healthy=True) in both of:
+          a) NLP tier passes all 5 prompts.
+          b) NLP tier fails but regex tier passes all 5 prompts (degraded mode).
+
+        Returns False only if both tiers fail, setting is_healthy=False.
         """
-        for i, prompt in enumerate(self._VALIDATION_PROMPTS):
-            request_id = f"__startup_validation_{i}__"
-            try:
-                masked, _ = await asyncio.to_thread(self.mask, prompt, request_id)
-                restored = await asyncio.to_thread(self.unmask, masked, request_id)
-            finally:
-                self.discard_mapping(request_id)
+        passed = await self._validate_tier(self._scanner)
 
-            if _normalise(restored) != _normalise(prompt):
-                logger.error(
-                    "MASKING_INTEGRITY_FAILURE: prompt %d failed round-trip. "
-                    "original=%r  restored=%r",
-                    i,
-                    _normalise(prompt),
-                    _normalise(restored),
-                )
-                self.is_healthy = False
-                return False
+        if not passed and self._scanner.name == "nlp":
+            # Downgrade to regex tier — gateway stays online
+            logger.error(
+                "MASKING_DEGRADED_TO_REGEX: NLP PII scanner failed startup validation. "
+                "Downgrading to regex-only masker. A high-priority alert has been raised."
+            )
+            self._emit_degraded_alert()
+            self._scanner = RegexOnlyMasker()
+            passed = await self._validate_tier(self._scanner)
 
+        if not passed:
+            logger.error(
+                "MASKING_INTEGRITY_FAILURE: both NLP and regex PII scanners failed "
+                "startup validation — gateway entering 503 state."
+            )
+            self.is_healthy = False
+            return False
+
+        tier = self._scanner.name
+        logger.info(
+            "PII masking startup validation passed using %s tier (%d prompts)",
+            tier, len(self._VALIDATION_PROMPTS),
+        )
         self.is_healthy = True
-        logger.info("PII masking startup validation passed (%d prompts)", len(self._VALIDATION_PROMPTS))
+
+        # GLiNER Tier 1.5 startup validation (Req. 3.7, 3.8, 3.11)
+        if _HAS_GLINER:
+            await self._validate_gliner_tier()
+
         return True
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Internal helper
-# ---------------------------------------------------------------------------
+    async def _validate_tier(
+        self, scanner: RegexOnlyMasker | NLPMasker
+    ) -> bool:
+        """Run all validation prompts through mask → unmask for the given scanner.
 
+        Temporarily swaps self._scanner to the provided one so mask/unmask
+        use it, then restores the previous scanner regardless of outcome.
+        Scanner exceptions are caught and treated as a validation failure
+        (not propagated), so a broken NLP model OOM never kills startup.
+        """
+        original = self._scanner
+        self._scanner = scanner
+        try:
+            for i, prompt in enumerate(self._VALIDATION_PROMPTS):
+                rid = f"__startup_validation_{i}__"
+                try:
+                    masked, _ = await asyncio.to_thread(self.mask, prompt, rid)
+                    restored = await asyncio.to_thread(self.unmask, masked, rid)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "Tier '%s' raised on prompt %d: %s — treating as fidelity failure",
+                        scanner.name, i, exc,
+                    )
+                    return False
+                finally:
+                    self.discard_mapping(rid)
 
-def _build_placeholder_map(original: str, masked: str) -> dict[str, str]:
-    """Reconstruct a placeholder → original mapping by diffing the two strings.
+                if _normalise(restored) != _normalise(prompt):
+                    logger.warning(
+                        "Tier '%s' failed round-trip on prompt %d: "
+                        "original=%r restored=%r",
+                        scanner.name, i, _normalise(prompt), _normalise(restored),
+                    )
+                    return False
+        finally:
+            self._scanner = original
+        return True
 
-    Extracts all PII values from the original in document order and all
-    placeholder tokens from the masked string in document order, then
-    zips them together positionally.
-    """
-    placeholder_map: dict[str, str] = {}
+    _GLINER_VALIDATION_PROMPT: str = "Project Phoenix budget is confidential."
+    _GLINER_VALIDATION_TERMS: list[str] = ["Project Phoenix"]
 
-    # Extract placeholder tokens from masked string in order of appearance
-    placeholder_re = re.compile(r"\[[A-Z_]+_REDACTED(?:_\d+)?\]")
-    placeholders = placeholder_re.findall(masked)
+    async def _validate_gliner_tier(self) -> None:
+        """Run a GLiNER round-trip validation.  On failure, set ``_gliner_degraded``
+        and emit GLINER_DEGRADED alert.  ``is_healthy`` is NOT affected (Req. 3.11)."""
+        try:
+            # We need a real gliner model for validation — if app.state isn't
+            # available at this point we skip (model loaded later in lifespan).
+            # The degraded flag will be cleared when the model becomes available.
+            import gliner as _gl  # type: ignore[import]
+            model = _gl.GLiNER.from_pretrained("urchade/gliner_medium-v2.1")
+            rid = "__gliner_startup_validation__"
+            masked, gliner_map = await asyncio.to_thread(
+                self._gliner_masker.scan_sync,
+                self._GLINER_VALIDATION_PROMPT,
+                self._GLINER_VALIDATION_TERMS,
+                model,
+            )
+            # Unmask and verify round-trip
+            restored = masked
+            for ph, orig in gliner_map.items():
+                restored = restored.replace(ph, orig)
+            if restored.strip() != self._GLINER_VALIDATION_PROMPT.strip():
+                raise ValueError(f"Round-trip mismatch: {restored!r}")
+            logger.info("GLiNER Tier 1.5 startup validation passed")
+        except Exception as exc:  # noqa: BLE001 — Req. 3.8
+            logger.error(
+                "GLINER_DEGRADED: GLiNER Tier 1.5 failed startup validation (%s). "
+                "Custom entity masking disabled for this session. "
+                "is_healthy unchanged (gateway stays online).",
+                exc,
+            )
+            self._gliner_degraded = True
 
-    if not placeholders:
-        return {}
+    def _emit_degraded_alert(self) -> None:
+        """Log a high-priority telemetry alert when degrading to the regex tier."""
+        if self._telemetry_logger is None:
+            # No logger wired yet — write directly to stderr so it's never silent
+            import sys
+            print(
+                "ALERT [MASKING_DEGRADED_TO_REGEX] NLP PII scanner failed startup "
+                "validation. Gateway is running in reduced-accuracy regex-only mode.",
+                file=sys.stderr,
+                flush=True,
+            )
+            return
 
-    # Extract original PII spans in document order (by start position)
-    spans: list[tuple[int, str]] = []
-    for _, pattern in _FALLBACK_PATTERNS:
-        for match in pattern.finditer(original):
-            spans.append((match.start(), match.group(0)))
-
-    # Sort by position in the original string
-    spans.sort(key=lambda x: x[0])
-    originals = [v for _, v in spans]
-
-    for placeholder, original_val in zip(placeholders, originals):
-        placeholder_map[placeholder] = original_val
-
-    return placeholder_map
+        # Fire-and-forget async alert via the telemetry logger
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(
+                    self._telemetry_logger.record_alert(
+                        alert_type="MASKING_DEGRADED_TO_REGEX",
+                        severity="HIGH",
+                        detail=(
+                            "NLP PII scanner failed startup validation round-trip. "
+                            "Gateway operating in regex-only masking mode."
+                        ),
+                    )
+                )
+        except Exception:  # noqa: BLE001
+            pass  # alert emission must never crash startup

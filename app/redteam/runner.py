@@ -157,6 +157,9 @@ class RedTeamReport:
 class RedTeamRunner:
     """Orchestrates PyRIT + Garak adversarial testing against the Gateway (Req. 10)."""
 
+    MCP_URL: str = "http://localhost:9200"
+    _mcp_healthy: bool | None = None
+
     def __init__(self, gateway_base_url: str = "http://localhost:8000") -> None:
         self._base_url = gateway_base_url
         self._last_report: RedTeamReport | None = None
@@ -167,7 +170,11 @@ class RedTeamRunner:
         return self._last_report
 
     async def run(self, tracer: Any | None = None) -> RedTeamReport:
-        """Execute a full red-team run and return the report (Req. 10.1-10.7)."""
+        """Execute a full red-team run and return the report (Req. 10.1-10.7).
+
+        Tries the MCP server first (Req. 5.7, 5.8); falls back to in-process
+        execution if the MCP server is unavailable or returns an error.
+        """
         if self._running:
             raise RuntimeError("A red-team run is already in progress")
 
@@ -176,11 +183,22 @@ class RedTeamRunner:
         started_at = datetime.now(tz=timezone.utc)
         logger.info("Red team run started: session_id=%s", session_id)
 
+        # ------------------------------------------------------------------
+        # MCP-first delegation (Req. 5.7, 5.8)
+        # ------------------------------------------------------------------
+        mcp_report = await self._try_mcp_run(tracer)
+        if mcp_report is not None:
+            self._running = False
+            self._last_report = mcp_report
+            return mcp_report
+
+        # ------------------------------------------------------------------
+        # In-process fallback
+        # ------------------------------------------------------------------
         attack_results: list[AttackResult] = []
         garak_results: list[GarakProbeResult] = []
 
         try:
-            # --- PyRIT multi-turn attacks (or built-in library) ---
             attacks = await self._collect_attack_sequences()
             async with httpx.AsyncClient(timeout=30.0) as client:
                 for category, turns in attacks:
@@ -192,21 +210,9 @@ class RedTeamRunner:
                     )
                     attack_results.append(result)
 
-                    # Flag breakthrough in Langfuse (Req. 10.6)
-                    if result.breakthrough and tracer is not None:
-                        tracer.add_span(
-                            request_id=session_id,
-                            name="RED_TEAM_BREAKTHROUGH",
-                            input_data={"category": category, "prompts": turns},
-                            output_data={
-                                "response": result.response,
-                                "pipeline_stage_failed": result.pipeline_stage_failed,
-                            },
-                            level="ERROR",
-                            metadata={"redteam_session_id": session_id},
-                        )
+                    if result.breakthrough:
+                        await self._record_breakthrough(tracer, session_id, result)
 
-            # --- Garak probe-based scanning (Req. 10.4) ---
             garak_results = await self._run_garak_probes(session_id)
 
         except Exception as exc:  # noqa: BLE001
@@ -232,6 +238,100 @@ class RedTeamRunner:
             session_id, report.total_breakthroughs, report.total_prompts_sent,
         )
         return report
+
+    # ------------------------------------------------------------------
+    # MCP delegation helpers (Req. 5.7, 5.8, 5.10)
+    # ------------------------------------------------------------------
+
+    async def _try_mcp_run(self, tracer: Any | None) -> RedTeamReport | None:
+        """POST to the MCP server's /run endpoint.
+
+        Returns a ``RedTeamReport`` on success, or ``None`` on any failure
+        (network error, non-2xx status, parse error).  Sets ``_mcp_healthy``
+        accordingly and logs ``REDTEAM_MCP_UNAVAILABLE`` on failure.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(
+                    f"{self.MCP_URL}/run",
+                    json={"gateway_url": self._base_url},
+                )
+                resp.raise_for_status()
+                RedTeamRunner._mcp_healthy = True
+                mcp_data = resp.json()
+                report = self._parse_mcp_response(mcp_data, tracer)
+                return report
+        except Exception as exc:
+            logger.warning("REDTEAM_MCP_UNAVAILABLE: %s — falling back to in-process", exc)
+            RedTeamRunner._mcp_healthy = False
+            return None
+
+    def _parse_mcp_response(self, data: dict, tracer: Any | None) -> RedTeamReport:
+        """Convert MCP server JSON response to a ``RedTeamReport``."""
+        from datetime import datetime as _dt
+
+        def _parse_ts(s: str | None) -> _dt:
+            if s:
+                return _dt.fromisoformat(s)
+            return _dt.now(tz=timezone.utc)
+
+        attack_results: list[AttackResult] = []
+        for item in data.get("attack_results", []):
+            ar = AttackResult(
+                category=item.get("category", "unknown"),
+                session_id=data.get("session_id", ""),
+                prompts=item.get("prompts", []),
+                response=item.get("response"),
+                breakthrough=item.get("breakthrough", False),
+                timestamp=_parse_ts(item.get("timestamp")),
+            )
+            attack_results.append(ar)
+            if ar.breakthrough:
+                # Fire-and-forget breakthrough logging (Req. 5.10)
+                import asyncio as _asyncio
+                loop = _asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(
+                        self._record_breakthrough(tracer, data.get("session_id", ""), ar)
+                    )
+
+        return RedTeamReport(
+            session_id=data.get("session_id", ""),
+            started_at=_parse_ts(data.get("started_at")),
+            completed_at=_parse_ts(data.get("completed_at")),
+            total_prompts_sent=data.get("total_prompts_sent", 0),
+            total_blocks=data.get("total_blocks", 0),
+            total_breakthroughs=data.get("total_breakthroughs", 0),
+            block_rate=data.get("block_rate", 0.0),
+            breakthrough_rate=data.get("breakthrough_rate", 0.0),
+            attack_results=attack_results,
+            garak_results=[],
+            status=data.get("status", "completed"),
+        )
+
+    @staticmethod
+    async def _record_breakthrough(
+        tracer: Any | None,
+        session_id: str,
+        result: AttackResult,
+    ) -> None:
+        """Record a RED_TEAM_BREAKTHROUGH span in Langfuse (Req. 5.10)."""
+        if tracer is None:
+            return
+        try:
+            tracer.add_span(
+                request_id=session_id,
+                name="RED_TEAM_BREAKTHROUGH",
+                input_data={"category": result.category, "prompts": result.prompts},
+                output_data={
+                    "response": result.response,
+                    "pipeline_stage_failed": result.pipeline_stage_failed,
+                },
+                level="ERROR",
+                metadata={"redteam_session_id": session_id},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to record RED_TEAM_BREAKTHROUGH span: %s", exc)
 
     # ------------------------------------------------------------------
     # Attack sequence collection
