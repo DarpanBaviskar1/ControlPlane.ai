@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _is_real_key(value: str) -> bool:
+    """Return True when value is a non-empty, non-whitespace, non-dummy API key."""
+    return bool(value) and value.strip() != "" and not value.startswith("dummy")
 
 
 class Settings(BaseSettings):
@@ -22,7 +29,11 @@ class Settings(BaseSettings):
 
     # Embedding model used by the Groundedness Auditor
     EMBEDDING_MODEL: str = "text-embedding-3-small"
-    OPENAI_API_KEY: str = "dummy-openai-key"
+    LLM_API_KEY: str = ""
+
+    # Generic LLM provider settings
+    LLM_PROVIDER: Literal["openai", "anthropic", "google", "grok", "generic"] = "openai"
+    LLM_FALLBACK_MODEL: str = "gpt-4o-mini"
 
     # Vector store top-K retrieval
     VECTOR_STORE_TOP_K: int = 5
@@ -41,6 +52,8 @@ class Settings(BaseSettings):
     # Guardrails AI output validation (Req. 2.11-13)
     # Comma-separated list of validator IDs to load from Guardrails AI Hub.
     GUARDRAILS_VALIDATORS: str = "toxic-language,competitor-check"
+    # Guardrails Hub auth token (optional, public validators work without it)
+    GUARDRAILS_HUB_TOKEN: str = ""
 
     # Obot agent governance (Req. 11)
     OBOT_ENABLED: bool = True
@@ -53,6 +66,8 @@ class Settings(BaseSettings):
     WORLDSENSE_ENABLED: bool = True
     # Maximum evaluation time before treating verdict as RISK_DETECTED (Req. 12.6)
     WORLDSENSE_TIMEOUT_MS: int = 300
+    # Worldsense MCP server URL
+    WORLDSENSE_MCP_URL: str = "http://localhost:9100/evaluate"
 
     # Phase 3 — Semantic Cache (Req. 1.3, 1.4)
     CACHE_SIMILARITY_THRESHOLD: float = 0.92
