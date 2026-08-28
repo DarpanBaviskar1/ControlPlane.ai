@@ -106,6 +106,11 @@ class PolicyLoader:
             raise KeyError(f"Unknown use_case_profile: '{name}'")
         return profile
 
+    async def get_all_profiles(self) -> dict[str, UseCaseProfile]:
+        """Return a snapshot dict of all loaded profiles."""
+        async with self._lock:
+            return dict(self._profiles)
+
     def list_profiles(self) -> list[str]:
         """Return a snapshot list of currently loaded profile names."""
         return list(self._profiles.keys())

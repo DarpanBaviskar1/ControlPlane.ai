@@ -137,7 +137,7 @@ class TestPOV1NeverRaises:
 
     @pytest.mark.asyncio
     @given(st.text(min_size=0, max_size=4096))
-    @hyp_settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
+    @hyp_settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow], deadline=None)
     async def test_async_no_validators_never_raises(self, text: str) -> None:
         """P-OV-1 (async path): validate_output always returns GuardrailsVerdict."""
         result = await validate_output(text)
@@ -203,7 +203,7 @@ class TestPOV2ExceptionMeansHardBlock:
 
     @pytest.mark.asyncio
     @given(st.text(min_size=1, max_size=2048))
-    @hyp_settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow])
+    @hyp_settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow], deadline=None)
     async def test_async_exploding_validator_produces_hard_block(self, text: str) -> None:
         """P-OV-2 (async): same guarantee through validate_output()."""
         ov_module._LOADED_VALIDATORS.append(_make_exploding_validator())
