@@ -311,6 +311,25 @@ class AccuracyMetrics(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Integration health models
+# ---------------------------------------------------------------------------
+
+class IntegrationStatus(BaseModel):
+    """Status of a single external integration."""
+    status: Literal["active", "degraded"]
+    detail: str
+
+
+class ConfigHealthResponse(BaseModel):
+    """Response body for GET /v1/config/health."""
+    portkey: IntegrationStatus
+    langfuse: IntegrationStatus
+    guardrails: IntegrationStatus
+    worldsense: IntegrationStatus
+    llm_direct: IntegrationStatus
+
+
+# ---------------------------------------------------------------------------
 # Policy file schema helper
 # ---------------------------------------------------------------------------
 
