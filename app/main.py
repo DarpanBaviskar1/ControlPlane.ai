@@ -439,6 +439,62 @@ async def get_profiles(request: Request) -> dict[str, Any]:
     return {name: p.model_dump() for name, p in BUILT_IN_PROFILES.items()}
 
 
+@app.post("/v1/policy", tags=["Policy"])
+async def save_policy(request: Request) -> dict[str, Any]:
+    """Save policy updates to disk and trigger hot-reload."""
+    payload = await request.json()
+    if "profile" in payload:
+        payload["name"] = payload.pop("profile")
+        
+    loader = getattr(request.app.state, "policy_loader", None)
+    if not loader:
+        return JSONResponse(status_code=500, content={"error_code": "NO_LOADER", "detail": "Policy loader not active"})
+
+    try:
+        existing = await loader.get_profile(payload["name"])
+        existing_dict = existing.model_dump()
+    except KeyError:
+        from app.policy.defaults import BUILT_IN_PROFILES
+        if payload["name"] in BUILT_IN_PROFILES:
+            existing_dict = BUILT_IN_PROFILES[payload["name"]].model_dump()
+        else:
+            return JSONResponse(status_code=404, content={"error_code": "NOT_FOUND", "detail": "Profile not found"})
+
+    existing_dict.update(payload)
+
+    from app.models import UseCaseProfile
+    try:
+        updated_profile = UseCaseProfile.model_validate(existing_dict)
+    except Exception as e:
+        return JSONResponse(status_code=422, content={"error_code": "VALIDATION_ERROR", "detail": str(e)})
+
+    all_profiles = await loader.get_all_profiles()
+    all_profiles[updated_profile.name] = updated_profile
+
+    import yaml, json
+    from pathlib import Path
+    path_str = settings.POLICY_FILE_PATH
+    if not path_str:
+        path_str = "policy.yaml"
+        settings.POLICY_FILE_PATH = path_str
+        loader._path = Path(path_str)
+        await loader.start()
+
+    data = {"profiles": [p.model_dump() for p in all_profiles.values()]}
+    
+    try:
+        with open(path_str, "w", encoding="utf-8") as f:
+            if str(path_str).endswith(".json"):
+                json.dump(data, f, indent=2)
+            else:
+                yaml.dump(data, f, sort_keys=False)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error_code": "WRITE_ERROR", "detail": str(e)})
+
+    await loader.reload()
+    return {"status": "success", "profile": updated_profile.model_dump()}
+
+
 app.include_router(chat_router)
 app.include_router(streaming_router)
 app.include_router(metrics_router)

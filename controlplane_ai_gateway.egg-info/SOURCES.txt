@@ -5,6 +5,8 @@ app/config.py
 app/dependencies.py
 app/main.py
 app/models.py
+app/config_health/__init__.py
+app/config_health/router.py
 app/feedback/__init__.py
 app/feedback/router.py
 app/governance/__init__.py
