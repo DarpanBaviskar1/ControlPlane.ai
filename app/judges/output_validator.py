@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 try:
     import guardrails as gd  # type: ignore[import-untyped]
     _GUARDRAILS_AVAILABLE = True
-except ImportError:
+# Broad by necessity: guardrails may import successfully and then fail during
+# its own import (e.g. AttributeError from an incompatible openai version).
+# A narrow ImportError guard lets those escape and takes the whole app down.
+except Exception:
     _GUARDRAILS_AVAILABLE = False
     logger.info(
         "guardrails-ai package not installed — output validation will be skipped"
