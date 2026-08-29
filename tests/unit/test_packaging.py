@@ -69,6 +69,35 @@ def test_expected_extras_exist(pyproject: dict) -> None:
         assert group in extras, f"missing extra: {group}"
 
 
+def test_all_extra_covers_every_runtime_extra(pyproject: dict) -> None:
+    """`all` must name every runtime extra.
+
+    Adding a sixth extra and forgetting to list it here is the likely future
+    regression: `pip install '.[all]'` would silently omit a whole pipeline
+    stage, and nothing else in this file would notice.
+    """
+    project = pyproject["project"]
+    extras = project["optional-dependencies"]
+    runtime = set(extras) - {"all", "dev"}
+
+    specs = extras["all"]
+    assert len(specs) == 1, "`all` should be a single self-reference"
+    name, _, bracket = specs[0].partition("[")
+    assert name == project["name"], (
+        f"`all` self-references {name!r}, but the package is {project['name']!r}"
+    )
+    named = {group.strip() for group in bracket.rstrip("]").split(",")}
+    assert named == runtime, (
+        f"`all` names {sorted(named)}; runtime extras are {sorted(runtime)}"
+    )
+
+
+def test_no_extra_is_empty(pyproject: dict) -> None:
+    """An extra emptied to [] still has its key, so check the contents."""
+    for group, specs in pyproject["project"]["optional-dependencies"].items():
+        assert specs, f"extra {group!r} is declared but empty"
+
+
 def test_no_commercial_only_packages_anywhere(pyproject: dict) -> None:
     """faiss-cpu and portkey-ai are dead code — they must be gone entirely."""
     all_specs = list(pyproject["project"]["dependencies"])
