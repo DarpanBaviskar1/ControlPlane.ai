@@ -101,13 +101,16 @@ class TestAbsoluteCalibration:
     def test_length_decisive_prompt_scores_high(self) -> None:
         """Length must be able to carry a prompt over the bar on its own.
 
-        This prompt has no code fence and only one "?", and its 4
-        reasoning-term hits are well short of saturation (which needs 6+
-        distinct terms to hit 1.0, and even 4/4 only contributes
-        _W_REASONING=0.30 fully). Its 103 words are what push it to 0.700
-        at _LENGTH_SATURATION_WORDS=60 (vs. 0.530 at the brief's original
-        200) — asserting >= 0.6, not >= 0.7, since 0.700 is a float
-        equality boundary this test must not sit on.
+        This prompt has no code fence and only one "?", so the non-length
+        signals contribute 0.350 in total: reasoning is fully saturated at
+        4 distinct hits (compare, evaluate, how, why) against
+        _REASONING_SATURATION=4, giving the whole _W_REASONING=0.30, plus
+        0.050 from the single question. That is below the 0.6 bar, so the
+        103 words must supply the rest — 0.700 at
+        _LENGTH_SATURATION_WORDS=60 versus 0.530 at the brief's original
+        200, which is what makes this test fail if that constant regresses.
+        Asserts >= 0.6 rather than >= 0.7 because 0.700 is a float-equality
+        boundary this test must not sit on.
         """
         prompt = (
             "Our nightly batch reconciliation job used to finish in about twenty minutes and "
