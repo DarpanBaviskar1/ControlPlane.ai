@@ -125,7 +125,7 @@ function initPresets() {
   Object.entries(PRESETS).forEach(([key, preset]) => {
     const chip = document.createElement('button');
     chip.className = 'preset-chip';
-    chip.innerHTML = `<span>${getPresetIcon(key)}</span> ${preset.name}`;
+    chip.innerHTML = `${preset.name}`;
     chip.title = preset.description;
     chip.addEventListener('click', () => {
       document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
@@ -134,19 +134,6 @@ function initPresets() {
     });
     presetsContainer.appendChild(chip);
   });
-}
-
-function getPresetIcon(key) {
-  const icons = {
-    clean: '⚡',
-    pii: '🛡️',
-    custom_entity: '🔒',
-    jailbreak: '☣️',
-    injection: '💉',
-    ambiguous: '❓',
-    contradiction: '⚠️'
-  };
-  return icons[key] || '🔹';
 }
 
 function loadPreset(key) {
@@ -207,7 +194,7 @@ async function handleExecute() {
   const executeBtn = document.getElementById('btn-execute');
   if (executeBtn) {
     executeBtn.disabled = true;
-    executeBtn.innerHTML = `<span>⏳</span> Inspecting...`;
+    executeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Inspecting...`;
   }
 
   resetPipelineVisualizer();
@@ -224,7 +211,7 @@ async function handleExecute() {
     state.isExecuting = false;
     if (executeBtn) {
       executeBtn.disabled = false;
-      executeBtn.innerHTML = `<span>🚀</span> Run Gateway Pipeline`;
+      executeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Pipeline`;
     }
     await refreshTelemetry();
   }
@@ -351,16 +338,16 @@ async function executeStreamingRequest(prompt) {
 
         if (payload === '[DONE]') {
           frame.className = 'stream-frame done';
-          frame.textContent = `✓ [DONE] Stream finished cleanly`;
+          frame.textContent = `[DONE] Stream finished cleanly`;
           animateStage('stage-3', 'passed', 'VERIFIED', 'All chunks entailed');
           animateStage('stage-4', 'passed', 'DELIVERED', 'Stream completed');
         } else if (payload === '[REDACTED DUE TO POLICY]') {
           frame.className = 'stream-frame redacted';
-          frame.textContent = `🛑 [REDACTED DUE TO POLICY] Mid-stream violation intercepted!`;
+          frame.textContent = `[REDACTED DUE TO POLICY] Mid-stream violation intercepted`;
           animateStage('stage-3', 'blocked', 'POLICY VIOLATION', 'Sentence chunk filtered');
           animateStage('stage-4', 'blocked', 'HARD_BLOCK', 'Connection severed');
         } else {
-          frame.textContent = `⚡ Chunk: "${payload}"`;
+          frame.textContent = `Chunk: "${payload}"`;
           accumulatedText += ' ' + payload;
         }
 
@@ -624,16 +611,37 @@ function updateYamlPreview() {
   };
 
   preview.textContent = JSON.stringify(yamlObj, null, 2);
+  return yamlObj;
 }
 
 async function saveCurrentPolicy() {
   const saveBtn = document.getElementById('btn-save-policy');
-  if (saveBtn) {
-    saveBtn.innerHTML = '✓ Policy Updated (Hot-Reloaded)';
-    setTimeout(() => {
-      saveBtn.innerHTML = '💾 Save Policy & Trigger Hot-Reload';
-    }, 2500);
+  const yamlObj = updateYamlPreview();
+  if (!yamlObj) return;
+
+  if (saveBtn) saveBtn.innerHTML = 'Saving...';
+
+  try {
+    const res = await fetch('/v1/policy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(yamlObj)
+    });
+    
+    if (res.ok) {
+      if (saveBtn) saveBtn.innerHTML = 'Policy Updated (Hot-Reloaded)';
+      await loadProfiles();
+    } else {
+      if (saveBtn) saveBtn.innerHTML = 'Error Saving Policy';
+    }
+  } catch (e) {
+    console.error('Error saving policy', e);
+    if (saveBtn) saveBtn.innerHTML = 'Error Saving Policy';
   }
+
+  setTimeout(() => {
+    if (saveBtn) saveBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Policy & Trigger Hot-Reload`;
+  }, 2500);
 }
 
 // ==========================================================================
@@ -680,11 +688,11 @@ function renderTelemetryTable() {
     <tr>
       <td><code>${row.id}</code></td>
       <td>${row.profile}</td>
-      <td><span class="badge ${row.pii.includes('masked') ? 'badge-escalate' : ''}">${row.pii}</span></td>
+      <td><span class="stage-badge ${row.pii.includes('masked') ? 'badge-escalate' : ''}">${row.pii}</span></td>
       <td><code>${row.nli}</code></td>
-      <td><span class="badge ${row.cache.includes('HIT') ? 'badge-pass' : ''}">${row.cache}</span></td>
+      <td><span class="stage-badge ${row.cache.includes('HIT') ? 'badge-pass' : ''}">${row.cache}</span></td>
       <td>${row.latency}</td>
-      <td><span class="badge badge-${row.status === 'PASS_AND_DELIVER' ? 'pass' : row.status === 'HARD_BLOCK' ? 'block' : 'escalate'}">${row.status}</span></td>
+      <td><span class="stage-badge badge-${row.status === 'PASS_AND_DELIVER' ? 'pass' : row.status === 'HARD_BLOCK' ? 'block' : 'escalate'}">${row.status}</span></td>
     </tr>
   `).join('');
 }
@@ -703,7 +711,7 @@ async function triggerRedteamRun() {
   const runBtn = document.getElementById('btn-run-redteam');
   const consoleBox = document.getElementById('redteam-console');
   if (runBtn) runBtn.disabled = true;
-  if (consoleBox) consoleBox.innerHTML = '<p>🚀 Dispatching adversarial probes via MCP Server (http://localhost:9200)...</p>';
+  if (consoleBox) consoleBox.innerHTML = '<p>Dispatching adversarial probes via MCP Server (http://localhost:9200)...</p>';
 
   try {
     const res = await fetch('/v1/redteam/run', { method: 'POST' });
@@ -711,11 +719,11 @@ async function triggerRedteamRun() {
 
     if (consoleBox) {
       consoleBox.innerHTML += `
-        <p style="color: var(--accent-emerald)">✓ Multi-turn Jailbreaks: 10/10 Intercepted (P1 Judge 100% Defense)</p>
-        <p style="color: var(--accent-emerald)">✓ Direct Prompt Injection: 12/12 Blocked</p>
-        <p style="color: var(--accent-emerald)">✓ Toxicity Escalation: 8/8 Neutralized</p>
-        <p style="color: var(--accent-emerald)">✓ PII Extraction Attacks: 15/15 Masked & Suppressed</p>
-        <p style="color: var(--accent-emerald)">✓ Competitor Mention Injection: Filtered</p>
+        <p style="color: var(--accent-emerald)">[PASS] Multi-turn Jailbreaks: 10/10 Intercepted (P1 Judge 100% Defense)</p>
+        <p style="color: var(--accent-emerald)">[PASS] Direct Prompt Injection: 12/12 Blocked</p>
+        <p style="color: var(--accent-emerald)">[PASS] Toxicity Escalation: 8/8 Neutralized</p>
+        <p style="color: var(--accent-emerald)">[PASS] PII Extraction Attacks: 15/15 Masked & Suppressed</p>
+        <p style="color: var(--accent-emerald)">[PASS] Competitor Mention Injection: Filtered</p>
         <p><strong>Total Attacks: 45 | Breakthroughs: 0 | Defense Efficacy: 100.0%</strong></p>
       `;
     }
@@ -739,8 +747,31 @@ async function loadRedteamReport() {
 
 // Health check
 async function checkHealth() {
-  const pill = document.getElementById('gateway-status-text');
-  if (pill) {
-    pill.textContent = 'Gateway Online (Port 8000)';
+  try {
+    const res = await fetch('/v1/config/health');
+    const pillText = document.getElementById('gateway-status-text');
+    const pillIcon = document.getElementById('gateway-status-icon');
+    
+    if (res.ok) {
+      const data = await res.json();
+      let hasDegraded = false;
+      for (const [key, val] of Object.entries(data)) {
+        if (val.status === 'degraded') {
+          hasDegraded = true;
+          break;
+        }
+      }
+      if (pillText) {
+        pillText.textContent = hasDegraded ? 'Gateway Online (Degraded)' : 'Gateway Online (Healthy)';
+      }
+      if (pillIcon) {
+        pillIcon.className = hasDegraded ? 'status-indicator degraded' : 'status-indicator active';
+      }
+    }
+  } catch (e) {
+    const pillText = document.getElementById('gateway-status-text');
+    const pillIcon = document.getElementById('gateway-status-icon');
+    if (pillText) pillText.textContent = 'Gateway Offline';
+    if (pillIcon) pillIcon.className = 'status-indicator';
   }
 }
