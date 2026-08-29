@@ -46,18 +46,17 @@ _REASONING_SATURATION = 4
 # Question marks at or above this count saturate that signal.
 _QUESTION_SATURATION = 3
 
-_CODE_FENCE = re.compile(r"```|\n\s{4}\S|;\s*$", re.MULTILINE)
+_STRUCTURE_HINT = re.compile(r"```|\n\s{4}\S|;\s*$", re.MULTILINE)
 _WORD = re.compile(r"\b\w+\b")
 
 # Match reasoning terms on word boundaries so substrings inside ordinary
 # words ("how" inside "however" or "shower") are never counted as hits.
-# Longest terms first so multi-word terms like "root cause" are not
-# shadowed by a shorter alternative in the alternation.
+# Terms are sorted longest-first as future-proofing for the alternation,
+# though no current term in _REASONING_TERMS is a prefix of another.
 _REASONING_PATTERN = re.compile(
     r"\b(?:"
     + "|".join(re.escape(term) for term in sorted(_REASONING_TERMS, key=len, reverse=True))
-    + r")\b",
-    re.IGNORECASE,
+    + r")\b"
 )
 
 
@@ -82,12 +81,12 @@ def score_complexity(prompt: str) -> float:
     #    boundaries so multi-word terms like "root cause" are matched too,
     #    and substrings inside ordinary words ("however", "shower") are not
     #    mistaken for hits. Distinct terms are counted, not occurrences.
-    hits = len({m.group(0).lower() for m in _REASONING_PATTERN.finditer(lowered)})
+    hits = len({m.group(0) for m in _REASONING_PATTERN.finditer(lowered)})
     reasoning_signal = min(hits / _REASONING_SATURATION, 1.0)
 
     # 3. Structure — code fences, indented blocks or statement terminators
     #    mean the model must parse as well as answer.
-    structure_signal = 1.0 if _CODE_FENCE.search(prompt) else 0.0
+    structure_signal = 1.0 if _STRUCTURE_HINT.search(prompt) else 0.0
 
     # 4. Question density — several questions in one prompt means several
     #    sub-answers.
