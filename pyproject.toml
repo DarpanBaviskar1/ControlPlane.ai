@@ -7,35 +7,60 @@ name = "controlplane-ai-gateway"
 version = "0.1.0"
 description = "Enterprise AI Proxy Gateway with five-stage safety pipeline"
 requires-python = ">=3.11"
+# Required floor: every entry here has an unguarded top-level import in app/.
+#   fastapi / uvicorn / pydantic / pydantic-settings — the service itself
+#   httpx    — app/oversight/worldsense_oversight.py:23, app/redteam/runner.py:31,
+#              app/ingress/streaming_router.py:27
+#   watchdog — app/policy/loader.py:26-27 (policy hot-reload)
+# Everything else is guarded by try/except ImportError and lives in an extra.
 dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.29.0",
     "pydantic>=2.7.1",
     "pydantic-settings>=2.2.1",
-    "llm-guard",
-    "routellm>=0.2.0",
-    "portkey-ai>=1.7.0",
-    "faiss-cpu>=1.9.0",
-    "spacy>=3.8.0",
-    "tiktoken>=0.7.0",
-    "watchdog>=4.0.0",
     "httpx>=0.27.0",
-    "numpy>=1.26.4",
-    "openai>=1.30.1",
-    "python-multipart>=0.0.9",
-    "langfuse",
-    "guardrails-ai",
-    "pyrit",
-    "garak",
+    "watchdog>=4.0.0",
 ]
 
 [project.optional-dependencies]
+# Real LLM dispatch. Without this the gateway serves contextual mock
+# responses — fine for CI and local dev, useless in production.
+llm = [
+    "litellm>=1.44.0",
+    "tiktoken>=0.7.0",
+]
+# Input-side safety upgrades: NLP PII masking, dependency parsing,
+# zero-shot custom-entity NER, output validation.
+safety = [
+    "llm-guard",
+    "spacy>=3.8.0",
+    "gliner",
+    "guardrails-ai",
+]
+# Semantic cache (Stage 0).
+cache = [
+    "gptcache",
+    "numpy>=1.26.4",
+]
+# Groundedness: local embeddings + NLI cross-encoder (Stage 3).
+grounded = [
+    "sentence-transformers>=3.0.0",
+]
+# Optional observability. Langfuse's core is MIT and self-hostable;
+# routellm is retained only for operators who already depend on it.
+observe = [
+    "langfuse",
+    "routellm>=0.2.0",
+]
 dev = [
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.6",
     "pytest-timeout>=2.3.1",
     "hypothesis>=6.100.2",
     "anyio>=4.3.0",
+]
+all = [
+    "controlplane-ai-gateway[llm,safety,cache,grounded,observe]",
 ]
 
 [tool.pytest.ini_options]
