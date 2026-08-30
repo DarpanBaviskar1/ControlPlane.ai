@@ -134,7 +134,9 @@ async def route_and_call(
                 completion = await client.chat.completions.create(
                     model=settings.LLM_FALLBACK_MODEL,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=512,
+                    max_tokens=2048,  # headroom for "thinking" models (Gemini 3.x, o-series):
+                                      # internal reasoning tokens are billed against this budget,
+                                      # so 512 truncated answers mid-sentence (finish_reason=length).
                 )
                 live_text = completion.choices[0].message.content or ""
                 return RoutingDecision(
