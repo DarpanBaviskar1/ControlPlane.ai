@@ -150,7 +150,10 @@ def _call_kwargs(model: str, messages: list[dict[str, str]]) -> dict[str, Any]:
         "messages": messages,
         "timeout": settings.LLM_TIMEOUT_S,
         "num_retries": settings.LLM_MAX_RETRIES,
-        "max_tokens": 512,
+        # Same budget concern as model_router: reasoning models (Gemini 3.x,
+        # o-series) spend this on internal thinking before emitting visible
+        # text, so 512 truncates answers mid-sentence.
+        "max_tokens": 2048,
     }
     # Omit api_key entirely when blank rather than passing api_key="" — an
     # empty string is a value litellm would treat as a (bad) real credential
