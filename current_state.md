@@ -511,15 +511,19 @@ class ConfigHealthResponse(BaseModel):
 
 ## Test Suite
 
-All tests live in `tests/unit/`. **299 tests collected: 294 pass, 4 skipped, 1 fails.**
-
-The single failure is `test_frontend_integration.py::test_serve_dashboard_root`. It is
-**pre-existing on `main`**, unrelated to any current work, and is deliberately left alone —
-every task on the vendor-independence branch treats it as the known baseline rather than
-"fixing" it. Measure counts at your own commit; they move as tasks land.
+All tests live in `tests/unit/`. **299 collected: 295 pass, 4 skipped, 0 failures** (verified 2026-08-30, Python 3.14 venv).
 
 Breakdown: 249 from the three groups below, 45 added by the Vendor Independence round, and
-5 in `test_frontend_integration.py` (previously undocumented here).
+5 in `test_frontend_integration.py`.
+
+`test_frontend_integration.py::test_serve_dashboard_root` was the long-standing baseline
+failure carried on `main`. It is now fixed: it asserted `"Security Bouncer"`, a string that
+appears nowhere in the repo but that test, while the dashboard heading is
+`Enterprise AI Proxy Gateway`. The test was failing against a correct page.
+
+`tests/conftest.py` holds an `autouse` fixture that resets every `Settings` field to its
+declared default, so a developer's `.env` cannot change what the suite exercises. Without it,
+real credentials on disk caused two validation tests to dispatch live provider calls.
 
 ### Pre-Phase-3 tests (154 tests)
 
@@ -672,7 +676,18 @@ tiering". Calibration is deliberately deferred.
 - **`OPENAI_API_KEY` → `LLM_API_KEY`**: renamed for provider generality. Old `OPENAI_API_KEY`
   in `.env` is silently ignored (`extra="ignore"`); operators must rename it.
 - **Gemini model deprecation**: `gemini-1.5-flash` / `gemini-2.0-flash` shut down June 1, 2026.
-  Current free-tier model is `gemini-2.5-flash`.
+  `gemini-2.5-flash` now returns 404 "no longer available to new users" as well. Probed against
+  the live free-tier API (2026-08-30): `gemini-3.5-flash` works; `gemini-3.6-flash` and
+  `gemini-flash-latest` time out; `gemini-pro-latest` returns 429 (not on the free tier), so
+  there is no usable second tier on a free-tier key.
+- **Gemini free tier is 20 requests/day/model**: the 429 body names
+  `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20`. A quota-exhausted key
+  is indistinguishable from mock mode at the API surface — `/v1/config/health` still reports
+  `llm_direct: active` because it only checks that a key is *configured*, while `/v1/chat`
+  silently serves canned mock text after the 429 is swallowed at `model_router.py`.
+- **Thinking models consume `max_tokens` before emitting text**: Gemini 3.x spends the budget
+  on internal reasoning, so the hardcoded `max_tokens=512` returned `finish_reason=length`
+  with answers cut mid-sentence (measured: `completion=16`, `total=520`). Raised to 2048.
 - **`run_orchestrator` alias**: `app/judges/orchestrator.py` exports
   `run_orchestrator = run_micro_judges` to satisfy local imports in streaming_router.
 - **`get_profile()` is async**: streaming router calls `await policy_loader.get_profile()`.
@@ -684,3 +699,26 @@ tiering". Calibration is deliberately deferred.
 - **Worldsense URL in config**: `_MCP_URL` was constructed from `os.getenv()` inside
   `worldsense_oversight.py`. Moved to `settings.WORLDSENSE_MCP_URL` for consistency.
 - **Hypothesis fixture scoping** and **`_FallbackScanner` closure bug**: see Phase 3 notes.
+- **`except ImportError` is too narrow for optional dependencies**: an optional package can
+  begin importing and then fail *during* its own import, which raises something other than
+  `ImportError` and escapes the guard. Because `app/main.py` imports these modules at startup,
+  each escape took down the whole app and blocked test collection. Two instances found:
+  - `app/judges/output_validator.py` — `guardrails` touches `openai.error`, removed in
+    `openai>=1`, raising `AttributeError`.
+  - `app/router/model_router.py` — `routellm` constructs `OpenAI()` at module import time,
+    raising `OpenAIError` when `OPENAI_API_KEY` is unset.
+
+  Both now catch `Exception`. Test collection went from 192 tests + 5 collection errors to
+  254 tests + 0 errors.
+- **Suite had no `tests/conftest.py`, so a developer's `.env` changed what the tests did**:
+  `Settings` reads `.env` (`app/config.py:34`), and with real credentials present
+  `test_whitespace_only_prompt_returns_422` and `test_prompt_max_length_exactly_32768_valid`
+  dispatched live provider requests instead of exercising request validation — exhausting the
+  Gemini free-tier daily quota and then failing on the 429. `test_llm_provider_default` and
+  `test_llm_fallback_model_default` assert *declared* defaults and failed for the same reason.
+  Fixed with an `autouse` fixture that resets all 33 `Settings` fields to their declared
+  defaults, so the suite runs as though no `.env` existed. Tests that need a live-looking key
+  still opt in via `monkeypatch.setattr(settings, ...)`.
+- **Stale dashboard assertion**: `test_serve_dashboard_root` asserted `"Security Bouncer"`,
+  a string that exists nowhere but that test — the dashboard heading is
+  `Enterprise AI Proxy Gateway`. The test was failing against a correct page.
