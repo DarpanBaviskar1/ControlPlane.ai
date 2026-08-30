@@ -194,7 +194,7 @@ async function handleExecute() {
   const executeBtn = document.getElementById('btn-execute');
   if (executeBtn) {
     executeBtn.disabled = true;
-    executeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Inspecting...`;
+    executeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Processing...`;
   }
 
   resetPipelineVisualizer();
@@ -211,7 +211,7 @@ async function handleExecute() {
     state.isExecuting = false;
     if (executeBtn) {
       executeBtn.disabled = false;
-      executeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Pipeline`;
+      executeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Execute`;
     }
     await refreshTelemetry();
   }
@@ -629,19 +629,19 @@ async function saveCurrentPolicy() {
     });
     
     if (res.ok) {
-      if (saveBtn) saveBtn.innerHTML = 'Policy Updated (Hot-Reloaded)';
+      if (saveBtn) saveBtn.innerHTML = 'Policy Saved';
       await loadProfiles();
     } else {
-      if (saveBtn) saveBtn.innerHTML = 'Error Saving Policy';
+      if (saveBtn) saveBtn.innerHTML = 'Save Failed';
     }
   } catch (e) {
     console.error('Error saving policy', e);
-    if (saveBtn) saveBtn.innerHTML = 'Error Saving Policy';
+    if (saveBtn) saveBtn.innerHTML = 'Save Failed';
   }
 
   setTimeout(() => {
-    if (saveBtn) saveBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Policy & Trigger Hot-Reload`;
-  }, 2500);
+    if (saveBtn) saveBtn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Policy`;
+  }, 2000);
 }
 
 // ==========================================================================
