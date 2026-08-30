@@ -7,11 +7,27 @@ interaction between enterprise applications or agents and underlying Large Langu
 through a deterministic five-stage safety pipeline that enforces safety, cost governance,
 groundedness assurance, and output triage before a response is delivered to callers.
 
-This document reflects the current implementation state after four rounds of development:
+This document reflects the current implementation state after five rounds of development:
 the original five-stage pipeline, five targeted hardening improvements, the **Phase 3
 upgrades** (Semantic Cache, NLI Groundedness, GLiNER Masking, SSE Streaming, Redteam MCP),
-and the **Real API Key Integration** round that generalised all external integrations, added
-a provider-agnostic LLM dispatch layer, and introduced the `GET /v1/config/health` endpoint.
+the **Real API Key Integration** round that generalised all external integrations, added
+a provider-agnostic LLM dispatch layer, and introduced the `GET /v1/config/health` endpoint,
+and the in-progress **Vendor Independence** round described below.
+
+> ### Status: Vendor Independence is PARTIALLY COMPLETE
+>
+> Branch `feat/vendor-independence` removes the project's dependence on commercial
+> software. What has landed: the packaging floor is cut to six required packages,
+> `faiss-cpu` and `portkey-ai` are gone entirely, optional-import guards are widened so a
+> broken optional package degrades instead of crashing, and two new vendor-neutral modules
+> exist — `app/router/complexity.py` (local prompt scoring) and `app/router/providers.py`
+> (LiteLLM egress).
+>
+> **What has NOT landed:** `app/router/model_router.py` is still the original
+> Portkey-first implementation. The two new modules are built and tested but **not yet
+> wired into the pipeline**, the SSE streaming path still requires a Portkey key, and the
+> `PORTKEY_*` settings still exist. Sections below marked **(being replaced)** describe
+> code that is still live today. See *Vendor Independence — Progress* near the end.
 
 ---
 
@@ -28,7 +44,7 @@ app/
   groundedness/
     auditor.py                — Two-stage embedding + NLI groundedness auditor
     nli_scorer.py             — NLI cross-encoder wrapper (Phase 3)
-    vector_store.py           — FAISS vector store + pgvector stub
+    vector_store.py           — VectorStore protocol; FAISSVectorStore is a STUB
   ingress/
     router.py                 — POST /v1/chat handler
     sliding_window.py         — Sentence-chunk token buffer for SSE (Phase 3)
@@ -51,7 +67,9 @@ app/
     router.py                 — POST /v1/redteam/run + GET /v1/redteam/report
     runner.py                 — MCP-first red team orchestrator (Phase 3)
   router/
+    complexity.py             — Local dependency-free prompt complexity scorer (NEW)
     model_router.py           — Multi-provider LLM dispatch (Portkey + direct + mock)
+    providers.py              — LiteLLM egress layer, two-tier fallback (NEW)
     semantic_cache.py         — GPTCache-backed vector similarity cache (Phase 3)
   telemetry/
     logger.py                 — Async telemetry queue + RetentionManager
@@ -73,7 +91,8 @@ mcp_servers/
     mcp.json
 
 tests/
-  unit/                       — 245 unit + property tests (4 skipped)
+  unit/                       — 299 unit + property tests collected (294 pass, 4 skipped,
+                                1 known pre-existing failure)
 
 .env.example                  — Canonical config reference (committed, documented)
 .env                          — Local dev config (git-ignored, never committed)
@@ -126,8 +145,8 @@ Settings are grouped into 10 numbered sections matching `.env.example`:
 
 | Section | Key settings |
 |---|---|
-| 1. LLM Provider | `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_FALLBACK_MODEL` |
-| 2. Portkey Gateway | `PORTKEY_API_KEY`, `PORTKEY_SLM_VIRTUAL_KEY`, `PORTKEY_FRONTIER_VIRTUAL_KEY` |
+| 1. LLM Provider | `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_FALLBACK_MODEL`, `LLM_API_BASE`, `SLM_MODEL`, `FRONTIER_MODEL`, `LLM_TIMEOUT_S`, `LLM_MAX_RETRIES` |
+| 2. Portkey Gateway **(being replaced)** | `PORTKEY_API_KEY`, `PORTKEY_SLM_VIRTUAL_KEY`, `PORTKEY_FRONTIER_VIRTUAL_KEY` |
 | 3. Langfuse | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` |
 | 4. Guardrails AI | `GUARDRAILS_VALIDATORS`, `GUARDRAILS_HUB_TOKEN` |
 | 5. Worldsense MCP | `WORLDSENSE_ENABLED`, `WORLDSENSE_MCP_URL`, `WORLDSENSE_TIMEOUT_MS` |
@@ -139,6 +158,18 @@ Settings are grouped into 10 numbered sections matching `.env.example`:
 
 `extra="ignore"` is set on the model so unknown env vars (e.g. old `OPENAI_API_KEY`) are
 silently ignored and never cause startup errors.
+
+**Section 1 additions (Vendor Independence round).** `LLM_API_BASE` is the important one:
+set it to point at any OpenAI-compatible endpoint (`http://localhost:11434` for Ollama,
+or vLLM / LM Studio / a self-hosted proxy). Such a backend needs **no API key at all**, so
+`providers.is_live()` treats a set `LLM_API_BASE` as sufficient on its own. `SLM_MODEL` and
+`FRONTIER_MODEL` name the two dispatch tiers; their defaults are deliberately left as
+paid-model names for backward compatibility, because blanking them produces a malformed
+model string.
+
+**`.env.example` drift is now a test failure**, not a review convention:
+`tests/unit/test_env_example_sync.py` fails if a `Settings` field is documented nowhere,
+and also if `.env.example` names a key no field reads.
 
 ---
 
@@ -197,11 +228,24 @@ P3: tiktoken token count + spaCy dependency parse (stub fallback when absent).
 
 ### Stage 2 — Model Router
 
-**File:** `app/router/model_router.py`
+**File:** `app/router/model_router.py` **(being replaced)**
+
+> **Read this before the three tiers below.** `model_router.py` is still the original
+> Portkey-first implementation, so Tiers A/B/C describe what runs today. Two replacement
+> modules are already committed and tested but **not yet called by the pipeline**:
+> `app/router/complexity.py` and `app/router/providers.py` (see *Vendor Independence —
+> Progress*). Two honest caveats about the code as it stands today:
+>
+> - **The "tiering" is not real.** `model_router.py:184` sets `score = 0.5  # Fixed mock
+>   score` — a constant, so every prompt lands on the same side of any threshold. The
+>   SLM/Frontier virtual-key configs are never actually read. `complexity.py` replaces this
+>   with a real score, once wired.
+> - **Portkey is a commercial SaaS proxy**, and its key is what gates the only real
+>   streaming path. That is the coupling this round removes.
 
 Three-tier dispatch in priority order:
 
-#### Tier A — Portkey Gateway (recommended for production)
+#### Tier A — Portkey Gateway (commercial SaaS — being removed)
 
 When `_is_real_key(PORTKEY_API_KEY)`, all calls go through Portkey with:
 ```
@@ -212,6 +256,10 @@ x-portkey-provider:     LLM_PROVIDER   ← routes to correct upstream (openai/an
 Portkey handles retries, SLM↔Frontier fallback, and cost tracking.
 
 #### Tier B — Direct provider call (when Portkey absent, `LLM_API_KEY` set)
+
+Note: this tier hand-rolls a provider→base-URL map and imports `openai` inline at
+`model_router.py:120`. `providers.py` replaces both with LiteLLM, which resolves provider
+strings itself.
 
 Uses `openai.AsyncOpenAI` with a provider-specific base URL:
 
@@ -233,6 +281,23 @@ local dev, CI, and tests. Never raises an exception.
 
 **Startup log**: `PORTKEY_ACTIVE provider=<X>` or `PORTKEY_DEGRADED — mock responses active`.
 
+#### Replacement: `app/router/providers.py` (committed, not yet wired)
+
+The vendor-neutral egress layer every later stage will call. LiteLLM is BSD-3 licensed and
+is a *library*, not a service: no account, no running proxy, no per-call vendor hop.
+
+```python
+acomplete(prompt, tier, system=None) -> tuple[str, str]   # (text, model_actually_used)
+astream(prompt, tier, system=None)   -> AsyncGenerator[str, None]
+generate_contextual_response(prompt) -> str               # deterministic mock text
+is_live()                            -> bool
+```
+
+`is_live()` returns True when a real key is present **or** `LLM_API_BASE` is set, which is
+what makes keyless local backends work. When the key is blank, `api_key` is omitted from the
+LiteLLM call entirely rather than passed as `""`. Failure of the SLM tier retries on
+FRONTIER; total failure degrades to `generate_contextual_response`, never an exception.
+
 #### Guardrails AI Output Validation (`app/judges/output_validator.py`)
 
 - `load_validators()`: tries `gd.hub.load(vid)`; on failure attempts `_hub_install(vid)` subprocess
@@ -246,7 +311,14 @@ local dev, CI, and tests. Never raises an exception.
 
 **Files:** `app/groundedness/auditor.py`, `app/groundedness/nli_scorer.py`, `app/groundedness/vector_store.py`
 
-**Stage 3a — Embedding similarity** (always): FAISS cosine similarity → `groundedness_score ∈ [0.0, 1.0]`.
+**Stage 3a — Embedding similarity** (always): cosine similarity → `groundedness_score ∈ [0.0, 1.0]`.
+
+> **Correction.** Earlier revisions of this document credited FAISS here. That was wrong.
+> `app/groundedness/vector_store.py` defines `FAISSVectorStore`, but the class imports no
+> `faiss`, has an empty `__init__`, and its `similarity_search` returns a single hardcoded
+> `Document("mock document content")`. It is a **named stub**. Nothing in `app/` imports
+> `faiss` at all, which is why `faiss-cpu` was removed from the dependencies outright rather
+> than moved to an extra. Real vector-backed retrieval remains unimplemented.
 
 **Stage 3b — NLI cross-encoder** (when `nli_scorer` available): scores each `(doc_text, response)` pair;
 aggregates with `CONTRADICTION > ENTAILMENT > NEUTRAL`; sets `AuditResult.nli_label` and
@@ -439,7 +511,15 @@ class ConfigHealthResponse(BaseModel):
 
 ## Test Suite
 
-All tests live in `tests/unit/`. **245 tests pass, 4 skipped** in the current environment.
+All tests live in `tests/unit/`. **299 tests collected: 294 pass, 4 skipped, 1 fails.**
+
+The single failure is `test_frontend_integration.py::test_serve_dashboard_root`. It is
+**pre-existing on `main`**, unrelated to any current work, and is deliberately left alone —
+every task on the vendor-independence branch treats it as the known baseline rather than
+"fixing" it. Measure counts at your own commit; they move as tasks land.
+
+Breakdown: 249 from the three groups below, 45 added by the Vendor Independence round, and
+5 in `test_frontend_integration.py` (previously undocumented here).
 
 ### Pre-Phase-3 tests (154 tests)
 
@@ -477,13 +557,33 @@ All tests live in `tests/unit/`. **245 tests pass, 4 skipped** in the current en
 | `test_config_health.py` | `_is_real_key()` edge cases; `GET /v1/config/health` schema, status, latency |
 | `test_model_router_provider.py` | `LLM_API_KEY` rename; `LLM_FALLBACK_MODEL`; mock path when keys absent |
 
+### Vendor Independence tests (45 tests)
+
+| Test file | What it covers |
+|---|---|
+| `test_complexity.py` (16) | Score range and ordering, absolute calibration, reasoning-term word boundaries, inclusive `>=` threshold, `_W_*` weights summing to 1.0 |
+| `test_providers.py` (21) | Tier→model resolution per provider, `is_live()` including the keyless `LLM_API_BASE` case, `api_key` omitted when blank, SLM→FRONTIER fallback, mock degradation |
+| `test_packaging.py` (6) | The required-dependency floor stays minimal; every optional package stays in an extra; `all` names every runtime extra; `faiss-cpu`/`portkey-ai` absent entirely |
+| `test_env_example_sync.py` (2) | `.env.example` documents exactly the `Settings` fields — both an undocumented field and an orphaned key fail |
+
+**Anti-regression tests on this branch are mutation-checked**: the defect each test exists to
+catch is reintroduced, the test is confirmed to go red, and the mutated suite is confirmed to
+still *collect* (a mutant that fails to import proves nothing). This is not ceremony — it
+caught three of the four complexity-scorer signal weights being completely unconstrained by
+tests that looked entirely convincing in the diff and passed.
+
+### Test inventory note
+
+`test_frontend_integration.py` (5 tests) covers dashboard serving and static assets. It is
+listed here for the first time; `app/static/` was likewise absent from the layout section.
+
 ---
 
 ## Infrastructural State
 
 ### Python Environment
 
-- Python 3.13.x; `pyproject.toml` with `>=` lower bounds.
+- Python 3.14.6 in the primary venv; `pyproject.toml` declares `requires-python = ">=3.11"`.
 - Primary venv: `.venv` in project root.
 - Worldsense MCP: `mcp_servers/worldsense/requirements.txt` (isolated venv).
 - Redteam MCP: `mcp_servers/redteam/requirements.txt` (isolated venv).
@@ -496,16 +596,16 @@ All tests live in `tests/unit/`. **245 tests pass, 4 skipped** in the current en
 | **Pydantic v2** + **pydantic-settings** | Validation and env-var config | Yes |
 | **watchdog** | Policy Layer hot-reload | Yes |
 | **httpx** | Async HTTP (MCP probes, router, streaming) | Yes |
-| **openai** | Direct LLM calls (OpenAI-compatible) + Gemini via base_url | Yes |
-| **FAISS** (`faiss-cpu`) | Groundedness Auditor + SemanticCache | Yes |
-| **tiktoken** | P3 Judge token counting | Yes |
+| **litellm** | Vendor-neutral LLM egress (`providers.py`); BSD-3, library not service | Optional (`[llm]`) |
+| **openai** | Legacy direct-call path in `model_router.py` (being replaced) | Optional |
+| **tiktoken** | P3 Judge token counting | Optional (`[llm]`) |
 | **hypothesis** + **pytest-asyncio** | Property-based + async testing | Dev |
 | **spaCy** (`en_core_web_sm`) | P3 Judge dependency parse | Optional |
 | **llm-guard** | NLP PII scanning Tier 1 | Optional |
-| **routellm** + **portkey-ai** | RouteLLM complexity router + Portkey dispatch | Optional |
+| **routellm** | Legacy complexity router; superseded by `complexity.py` | Optional (`[observe]`) |
 | **langfuse** | Distributed tracing | Optional |
 | **guardrails-ai** | Output validation chain | Optional |
-| **gptcache** | SemanticCache embedding + FAISS index | Optional |
+| **gptcache** | SemanticCache embedding + FAISS index (its own bundled FAISS, not ours) | Optional (`[cache]`) |
 | **sentence-transformers** | NLI cross-encoder for groundedness | Optional |
 | **gliner** | Custom entity NER Tier 1.5 | Optional |
 | **worldsense** | Multi-turn oversight (also via MCP) | Optional |
@@ -524,6 +624,48 @@ The gateway's direct-call path uses the OpenAI Python SDK with provider-specific
 
 Tested live with `gemini-2.5-flash` (free tier: ~1,500 req/day). Note: `gemini-1.5-flash` and
 `gemini-2.0-flash` were retired June 2026 — use `gemini-2.5-flash` or newer.
+
+## Vendor Independence — Progress
+
+**Branch:** `feat/vendor-independence` (pushed to `origin`). **Goal:** the project depends on
+no commercial software apart from whichever LLM the operator chooses to call.
+
+### Landed
+
+| Change | Effect |
+|---|---|
+| Required dependencies cut to six | `fastapi`, `uvicorn`, `pydantic`, `pydantic-settings`, `httpx`, `watchdog` — everything else moved behind an extra (`[llm]`, `[safety]`, `[cache]`, `[grounded]`, `[observe]`) and guarded by `try/except ImportError` |
+| `faiss-cpu` and `portkey-ai` deleted outright | Neither was imported anywhere in `app/`. Not moved to an extra — removed |
+| Optional-import guards widened | A package that imports but then fails at construction now degrades instead of crashing startup |
+| `app/router/complexity.py` (new) | Local, dependency-free prompt complexity scoring. Replaces the `score = 0.5` constant with a real signal |
+| `app/router/providers.py` (new) | LiteLLM egress layer, two-tier dispatch with SLM→FRONTIER fallback and mock degradation |
+| `.env.example` sync enforced by test | Undocumented settings and orphaned keys both fail the suite |
+
+**Required install footprint: ~57 MB, down from ~6.3 GB** (roughly 110x) for an operator who
+wants the gateway and nothing optional.
+
+### Not yet landed
+
+- **`model_router.py` is untouched** — still Portkey-first, still `score = 0.5`. `complexity.py`
+  and `providers.py` are tested but not yet called by the pipeline.
+- **SSE streaming still requires a Portkey key.** An operator with a valid Gemini key calling
+  `/v1/chat/stream` still gets canned mock text. This is the most user-visible remaining defect.
+- **`PORTKEY_*` settings still exist** in `config.py` and `.env.example`; `ConfigHealthResponse`
+  still has a `portkey` field.
+- **The dashboard still advertises the vendor**: `app/static/index.html` and
+  `app/static/js/app.js` display "RouteLLM & Portkey" and "Portkey token channel".
+- 51 `portkey` references remain in `app/` across 11 files.
+
+### An honest note on the new scorer
+
+`complexity.py` is primarily a **length-and-paste detector**, not a well-calibrated difficulty
+model. Measured: a verbose but trivial 161-word log dump with zero reasoning terms scores
+0.6000 and routes to FRONTIER, while "Prove Gödel's second incompleteness theorem." scores
+0.1100 and routes to SLM. It is strictly better than the hardcoded constant it replaces —
+which routed *everything* identically — but "real tiering" should not be read as "good
+tiering". Calibration is deliberately deferred.
+
+---
 
 ### Notable Fixed Issues
 

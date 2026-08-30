@@ -37,14 +37,37 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
-    # 1. LLM Provider (direct-call fallback, no Portkey required)
+    # 1. LLM Provider — dispatched via LiteLLM (BSD-3, no gateway service)
     # -------------------------------------------------------------------------
-    # LLM_API_KEY replaces the old OPENAI_API_KEY.
-    # If both LLM_API_KEY and PORTKEY_API_KEY are absent/dummy, the gateway
-    # serves safe mock/contextual responses — useful for local dev and tests.
+    # Model strings may be bare ("gemini-2.5-flash") or fully qualified
+    # ("gemini/gemini-2.5-flash").  Bare names are prefixed with the LiteLLM
+    # provider derived from LLM_PROVIDER at call time.
+    # If LLM_API_KEY is absent/dummy, the gateway serves safe contextual mock
+    # responses — useful for local dev, CI and the test suite.
     LLM_PROVIDER: Literal["openai", "anthropic", "google", "grok", "generic"] = "openai"
     LLM_API_KEY: str = ""
+
+    # Two-tier routing.  SLM handles ROUTINE prompts cheaply; FRONTIER handles
+    # COMPLEX ones.  Each is the other's fallback on dispatch failure.
+    # These string defaults ("gpt-4o-mini" / "gpt-4o") are deliberate
+    # back-compat sentinels, not vendor lock-in: blanking them yields a
+    # malformed model string ("openai/") once prefixed in providers.py.
+    SLM_MODEL: str = "gpt-4o-mini"
+    FRONTIER_MODEL: str = "gpt-4o"
+
+    # Retained as the alias older configs use for the SLM tier.  When
+    # SLM_MODEL is left at its default and this is set, this wins.
     LLM_FALLBACK_MODEL: str = "gpt-4o-mini"
+
+    # Per-call egress budget.  LiteLLM performs the retries internally.
+    LLM_TIMEOUT_S: float = 30.0
+    LLM_MAX_RETRIES: int = 2
+
+    # Optional explicit base URL — set this for self-hosted or
+    # OpenAI-compatible endpoints (Ollama, vLLM, LM Studio, LiteLLM proxy).
+    # A backend reached only through this URL may have no API key at all
+    # (e.g. a local Ollama server) — is_live() treats this as live too.
+    LLM_API_BASE: str = ""
 
     # -------------------------------------------------------------------------
     # 2. Portkey Gateway (recommended for production)

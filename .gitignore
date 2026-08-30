@@ -15,6 +15,9 @@ build/
 venv/
 env/
 
+# Agent scratch (SDD ledger, briefs, review packages)
+.superpowers/
+
 # Testing / coverage
 .pytest_cache/
 .hypothesis/

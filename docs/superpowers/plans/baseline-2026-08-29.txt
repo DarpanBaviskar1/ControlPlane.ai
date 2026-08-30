@@ -1,0 +1,20 @@
+FAILED tests/unit/test_config_health.py::TestConfigHealthEndpoint::test_all_degraded_with_dummy_keys
+FAILED tests/unit/test_config_health.py::TestConfigHealthEndpoint::test_portkey_active_when_real_key
+FAILED tests/unit/test_config_health.py::TestConfigHealthEndpoint::test_llm_direct_active_when_real_key
+FAILED tests/unit/test_config_health.py::TestConfigHealthEndpoint::test_worldsense_active_when_state_healthy
+FAILED tests/unit/test_config_health.py::TestConfigHealthEndpoint::test_no_outbound_calls_on_health_check
+FAILED tests/unit/test_model_router_provider.py::TestMockPathReturnsMockResponse::test_mock_response_when_all_keys_absent
+FAILED tests/unit/test_pii_graceful_degradation.py::TestBothTiersFail::test_unhealthy_engine_blocks_requests
+FAILED tests/unit/test_pii_masking.py::TestStartupValidation::test_unhealthy_engine_blocks_requests
+FAILED tests/unit/test_pii_masking.py::TestStartupValidation::test_healthy_engine_does_not_block_requests
+ERROR tests/unit/test_frontend_integration.py - AttributeError: module 'opena...
+ERROR tests/unit/test_ingress.py - AttributeError: module 'openai' has no att...
+ERROR tests/unit/test_ingress_properties.py - AttributeError: module 'openai'...
+ERROR tests/unit/test_output_validator_properties.py - AttributeError: module...
+ERROR tests/unit/test_streaming_endpoint_properties.py - AttributeError: modu...
+10 failed, 178 passed, 4 skipped, 8 warnings, 5 errors in 25.73s
+    from guardrails.llm_providers import PromptCallable, get_llm_ask
+  File "/home/vashu/workspace/darpan/ControlPlane.ai/.venv/lib/python3.14/site-packages/guardrails/llm_providers.py", line 17, in <module>
+    openai.error.APIConnectionError,
+    ^^^^^^^^^^^^
+AttributeError: module 'openai' has no attribute 'error'

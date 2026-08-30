@@ -12,7 +12,10 @@ from typing import Literal
 try:
     from routellm.controller import Controller
     _HAS_ROUTELLM = True
-except ImportError:
+# Broad by necessity: routellm constructs an openai client at import time and
+# raises OpenAIError (not ImportError) when no credentials are present.
+# Transitional — a later task removes this import entirely.
+except Exception:
     class DummyController:
         """Minimal stub to satisfy type checking when RouteLLM is absent.
         Accepts any init arguments.
