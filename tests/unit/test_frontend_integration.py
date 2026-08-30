@@ -13,7 +13,7 @@ def test_serve_dashboard_root():
     assert response.status_code == 200
     assert "text/html" in response.headers.get("content-type", "")
     assert "ControlPlane" in response.text
-    assert "Security Bouncer" in response.text
+    assert "Enterprise AI Proxy Gateway" in response.text
 
 
 def test_serve_dashboard_alias():
