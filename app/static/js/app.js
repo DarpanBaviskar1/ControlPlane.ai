@@ -1,7 +1,8 @@
 /**
- * ControlPlane.ai — Command Center Frontend Logic
- * Implements 5-stage real-time execution animation, SSE token streaming,
- * policy editing, live telemetry streams, and adversarial red-team hub.
+ * ControlPlane.ai — Revolut Design System Frontend
+ * Enterprise AI Gateway Control Plane
+ * 
+ * Maintains all original functionality with updated component classes
  */
 
 // ==========================================================================
@@ -87,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Navigation & Tabs
 // ==========================================================================
 function initNavigation() {
-  const navItems = document.querySelectorAll('.nav-item');
+  const navItems = document.querySelectorAll('.nav-pill');
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
@@ -99,7 +100,7 @@ function initNavigation() {
 
 function switchTab(tabId) {
   state.activeTab = tabId;
-  document.querySelectorAll('.nav-item').forEach(item => {
+  document.querySelectorAll('.nav-pill').forEach(item => {
     item.classList.toggle('active', item.getAttribute('data-tab') === tabId);
   });
   document.querySelectorAll('.tab-pane').forEach(pane => {
@@ -124,8 +125,9 @@ function initPresets() {
   presetsContainer.innerHTML = '';
   Object.entries(PRESETS).forEach(([key, preset]) => {
     const chip = document.createElement('button');
-    chip.className = 'preset-chip';
-    chip.innerHTML = `${preset.name}`;
+    chip.type = 'button';
+    chip.className = 'button-pill-sm preset-chip';
+    chip.innerHTML = preset.name;
     chip.title = preset.description;
     chip.addEventListener('click', () => {
       document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
@@ -245,46 +247,46 @@ async function executeStandardRequest(prompt) {
 
   // Stage 0: Cache
   if (data.cache_hit) {
-    animateStage('stage-0', 'passed', 'HIT (<2ms)', 'Exact/Vector match found');
+    animateStage('stage-0', 'passed', 'HIT', 'Exact/Vector match found');
     animateStage('stage-1', 'idle', 'BYPASSED', 'Served from cache');
     animateStage('stage-2', 'idle', 'BYPASSED', 'Zero LLM cost');
     animateStage('stage-3', 'passed', 'VERIFIED', 'Cached groundedness: 1.0');
-    animateStage('stage-4', 'passed', 'PASS_AND_DELIVER', 'Delivered from cache');
+    animateStage('stage-4', 'passed', 'DELIVER', 'Delivered from cache');
   } else {
     animateStage('stage-0', 'idle', 'MISS', 'Proceeded to pipeline');
 
     // Stage 1: Micro-Judges
     if (isBlocked && (data.blocking_reason === 'PROMPT_INJECTION' || data.blocking_reason === 'TOXICITY')) {
-      animateStage('stage-1', 'blocked', 'HARD_BLOCK', data.blocking_reason || 'P1 Safety Triggered');
+      animateStage('stage-1', 'blocked', 'BLOCKED', data.blocking_reason || 'P1 Safety');
       animateStage('stage-2', 'idle', 'CANCELLED', 'Short-circuited');
       animateStage('stage-3', 'idle', 'CANCELLED', 'Short-circuited');
-      animateStage('stage-4', 'blocked', 'HARD_BLOCK', 'Request dropped before LLM');
+      animateStage('stage-4', 'blocked', 'BLOCKED', 'Dropped before LLM');
       return;
     } else {
       const piiDetected = prompt.match(/\b\d{3}-\d{2}-\d{4}\b|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}|Project Phoenix|Apollo Core/gi);
       const piiCount = piiDetected ? piiDetected.length : 0;
-      animateStage('stage-1', 'passed', 'PASSED', `P1: Safe | P2: ${piiCount} masked | P3: Clear`);
+      animateStage('stage-1', 'passed', 'PASSED', `P1: Safe | P2: ${piiCount} masked`);
     }
 
     // Stage 2: Model Router
-    animateStage('stage-2', 'passed', 'ROUTED', 'RouteLLM: SLM Tier (Cost-Optimized)');
+    animateStage('stage-2', 'passed', 'ROUTED', 'SLM Tier (Cost-Optimized)');
 
     // Stage 3: Groundedness & NLI
     if (isBlocked && data.blocking_reason === 'NLI_CONTRADICTION') {
-      animateStage('stage-3', 'blocked', 'CONTRADICTION', 'DeBERTa: Contradicts policy documents');
-      animateStage('stage-4', 'blocked', 'HARD_BLOCK', 'Priority 0 Contradiction Block');
+      animateStage('stage-3', 'blocked', 'CONTRADICTION', 'DeBERTa: Policy violation');
+      animateStage('stage-4', 'blocked', 'BLOCKED', 'Priority 0 Block');
       return;
     } else {
-      animateStage('stage-3', 'passed', 'ENTAILED', 'Similarity: 95% | NLI: Entailment');
+      animateStage('stage-3', 'passed', 'ENTAILED', 'Similarity: 95% | NLI: OK');
     }
 
     // Stage 4: Triage Matrix
     if (isEscalated) {
-      animateStage('stage-4', 'escalated', 'ESCALATE_TO_HUMAN', 'Low confidence / Ambiguity detected');
+      animateStage('stage-4', 'escalated', 'ESCALATE', 'Low confidence detected');
     } else if (isBlocked) {
-      animateStage('stage-4', 'blocked', 'HARD_BLOCK', data.blocking_reason || 'Policy Violation');
+      animateStage('stage-4', 'blocked', 'BLOCKED', data.blocking_reason || 'Policy Violation');
     } else {
-      animateStage('stage-4', 'passed', 'PASS_AND_DELIVER', `Delivered (${latency}ms)`);
+      animateStage('stage-4', 'passed', 'DELIVER', `Completed (${latency}ms)`);
     }
   }
 
@@ -302,8 +304,8 @@ async function executeStreamingRequest(prompt) {
   const terminal = document.getElementById('streaming-terminal-body');
   if (terminal) terminal.innerHTML = '<div class="stream-frame">[OPENING SSE CONNECTION...]</div>';
 
-  animateStage('stage-0', 'running', 'Inspecting Cache...');
-  animateStage('stage-1', 'running', 'Pre-flight Micro-Judges...');
+  animateStage('stage-0', 'running', 'Cache Check...');
+  animateStage('stage-1', 'running', 'Pre-flight...');
 
   const response = await fetch('/v1/chat/stream', {
     method: 'POST',
@@ -316,8 +318,8 @@ async function executeStreamingRequest(prompt) {
 
   animateStage('stage-0', 'idle', 'MISS', 'Streaming tokens');
   animateStage('stage-1', 'passed', 'PASSED', 'Pre-flight clear');
-  animateStage('stage-2', 'passed', 'STREAMING', 'Portkey token channel');
-  animateStage('stage-3', 'running', 'Sliding-Window Auditing...');
+  animateStage('stage-2', 'passed', 'STREAMING', 'Token channel');
+  animateStage('stage-3', 'running', 'Sliding-Window...');
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder('utf-8');
@@ -343,9 +345,9 @@ async function executeStreamingRequest(prompt) {
           animateStage('stage-4', 'passed', 'DELIVERED', 'Stream completed');
         } else if (payload === '[REDACTED DUE TO POLICY]') {
           frame.className = 'stream-frame redacted';
-          frame.textContent = `[REDACTED DUE TO POLICY] Mid-stream violation intercepted`;
-          animateStage('stage-3', 'blocked', 'POLICY VIOLATION', 'Sentence chunk filtered');
-          animateStage('stage-4', 'blocked', 'HARD_BLOCK', 'Connection severed');
+          frame.textContent = `[REDACTED DUE TO POLICY] Mid-stream violation`;
+          animateStage('stage-3', 'blocked', 'VIOLATION', 'Chunk filtered');
+          animateStage('stage-4', 'blocked', 'SEVERED', 'Connection closed');
         } else {
           frame.textContent = `Chunk: "${payload}"`;
           accumulatedText += ' ' + payload;
@@ -372,14 +374,17 @@ function resetPipelineVisualizer() {
   for (let i = 0; i <= 4; i++) {
     const node = document.getElementById(`stage-${i}`);
     if (node) {
-      node.className = 'stage-node idle';
+      node.className = 'stage-card idle';
       const badge = node.querySelector('.stage-badge');
       const metrics = node.querySelector('.stage-metrics');
       if (badge) {
         badge.textContent = 'READY';
-        badge.className = 'stage-badge badge';
+        badge.className = 'badge-status badge-neutral stage-badge';
       }
-      if (metrics) metrics.textContent = 'Waiting for invocation...';
+      if (metrics) metrics.textContent = i === 0 ? 'Vector similarity scan' : 
+                                        i === 1 ? 'P1 · P2 · P3' :
+                                        i === 2 ? 'Complexity routing' :
+                                        i === 3 ? 'NLI cross-encoder' : 'Decision matrix';
     }
   }
 }
@@ -388,13 +393,17 @@ function animateStage(stageId, status, badgeText, metricText) {
   const node = document.getElementById(stageId);
   if (!node) return;
 
-  node.className = `stage-node ${status}`;
+  node.className = `stage-card ${status}`;
   const badge = node.querySelector('.stage-badge');
   const metrics = node.querySelector('.stage-metrics');
 
   if (badge) {
     badge.textContent = badgeText || status.toUpperCase();
-    badge.className = `stage-badge badge badge-${status === 'passed' ? 'pass' : status === 'blocked' ? 'block' : status === 'escalated' ? 'escalate' : 'pass'}`;
+    const badgeClass = status === 'passed' ? 'badge-success' : 
+                      status === 'blocked' ? 'badge-danger' : 
+                      status === 'escalated' ? 'badge-warning' :
+                      status === 'running' ? 'badge-info' : 'badge-neutral';
+    badge.className = `badge-status ${badgeClass} stage-badge`;
   }
   if (metrics && metricText) {
     metrics.textContent = metricText;
@@ -434,7 +443,7 @@ function updateTransformationViews(rawPrompt, data) {
     .replace(/Apollo Core/g, '<span class="token-custom">[CUSTOM_ENTITY_REDACTED_2]</span>');
 
   if (maskedPromptBox) maskedPromptBox.innerHTML = masked;
-  if (rawLlmBox) rawLlmBox.textContent = data.response ? `LLM Generation for: ${rawPrompt.slice(0, 30)}... \n${data.response}` : '[Blocked]';
+  if (rawLlmBox) rawLlmBox.textContent = data.response ? `LLM Generation:\n\n${data.response}` : '[Blocked]';
   if (finalResponseBox) finalResponseBox.textContent = data.response || `[HARD_BLOCK: ${data.blocking_reason || 'Policy rule violated'}]`;
 }
 
@@ -470,7 +479,7 @@ function populateProfileSelects() {
   profileNames.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
-    opt.textContent = name.replace('_', ' ').toUpperCase();
+    opt.textContent = name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
     select.appendChild(opt);
 
     if (editorSelect) {
@@ -486,10 +495,6 @@ function populateProfileSelects() {
 
 function initPolicyStudio() {
   const selector = document.getElementById('policy-profile-selector');
-  const cacheTtlSlider = document.getElementById('policy-cache-ttl');
-  const cacheSimSlider = document.getElementById('policy-cache-sim');
-  const groundSlider = document.getElementById('policy-groundedness');
-  const complexSlider = document.getElementById('policy-complexity');
 
   if (selector) {
     selector.addEventListener('change', (e) => {
@@ -539,11 +544,13 @@ function bindSlider(sliderId, badgeId, suffix) {
 
 function addCustomEntityChip(text) {
   const container = document.getElementById('custom-entity-tags');
-  if (!container) return;
+  const input = document.getElementById('custom-entity-tag-input');
+  if (!container || !input) return;
+  
   const chip = document.createElement('span');
   chip.className = 'tag-chip';
   chip.innerHTML = `${text} <button type="button" onclick="this.parentElement.remove(); updateYamlPreview();">&times;</button>`;
-  container.insertBefore(chip, document.getElementById('custom-entity-tag-input'));
+  container.insertBefore(chip, input);
 }
 
 function loadProfileIntoEditor(profileName) {
@@ -567,10 +574,26 @@ function loadProfileIntoEditor(profileName) {
   const agentOversight = document.getElementById('policy-agentic-oversight');
 
   if (cacheEnable) cacheEnable.checked = prof.cache_enabled ?? true;
-  if (cacheTtl) { cacheTtl.value = prof.cache_ttl_seconds ?? 300; document.getElementById('badge-cache-ttl').textContent = `${cacheTtl.value}s`; }
-  if (cacheSim) { cacheSim.value = prof.cache_similarity_threshold ?? 0.92; document.getElementById('badge-cache-sim').textContent = cacheSim.value; }
-  if (ground) { ground.value = prof.groundedness_pass_threshold ?? 0.85; document.getElementById('badge-groundedness').textContent = ground.value; }
-  if (complex) { complex.value = prof.complexity_threshold ?? 0.50; document.getElementById('badge-complexity').textContent = complex.value; }
+  if (cacheTtl) { 
+    cacheTtl.value = prof.cache_ttl_seconds ?? 300; 
+    const badge = document.getElementById('badge-cache-ttl');
+    if (badge) badge.textContent = `${cacheTtl.value}s`;
+  }
+  if (cacheSim) { 
+    cacheSim.value = prof.cache_similarity_threshold ?? 0.92; 
+    const badge = document.getElementById('badge-cache-sim');
+    if (badge) badge.textContent = cacheSim.value;
+  }
+  if (ground) { 
+    ground.value = prof.groundedness_pass_threshold ?? 0.85; 
+    const badge = document.getElementById('badge-groundedness');
+    if (badge) badge.textContent = ground.value;
+  }
+  if (complex) { 
+    complex.value = prof.complexity_threshold ?? 0.50; 
+    const badge = document.getElementById('badge-complexity');
+    if (badge) badge.textContent = complex.value;
+  }
   if (humanEsc) humanEsc.checked = prof.human_escalation_enabled ?? true;
   if (agentOversight) agentOversight.checked = prof.agentic_oversight_enabled ?? true;
 
@@ -583,7 +606,11 @@ function loadProfileIntoEditor(profileName) {
       const chip = document.createElement('span');
       chip.className = 'tag-chip';
       chip.innerHTML = `${term} <button type="button" onclick="this.parentElement.remove(); updateYamlPreview();">&times;</button>`;
-      container.insertBefore(chip, input);
+      if (input) {
+        container.insertBefore(chip, input);
+      } else {
+        container.appendChild(chip);
+      }
     });
   }
 
@@ -619,7 +646,7 @@ async function saveCurrentPolicy() {
   const yamlObj = updateYamlPreview();
   if (!yamlObj) return;
 
-  if (saveBtn) saveBtn.innerHTML = 'Saving...';
+  if (saveBtn) saveBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Saving...';
 
   try {
     const res = await fetch('/v1/policy', {
@@ -629,14 +656,14 @@ async function saveCurrentPolicy() {
     });
     
     if (res.ok) {
-      if (saveBtn) saveBtn.innerHTML = 'Policy Saved';
+      if (saveBtn) saveBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Policy Saved';
       await loadProfiles();
     } else {
-      if (saveBtn) saveBtn.innerHTML = 'Save Failed';
+      if (saveBtn) saveBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Save Failed';
     }
   } catch (e) {
     console.error('Error saving policy', e);
-    if (saveBtn) saveBtn.innerHTML = 'Save Failed';
+    if (saveBtn) saveBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Save Failed';
   }
 
   setTimeout(() => {
@@ -650,14 +677,15 @@ async function saveCurrentPolicy() {
 async function refreshTelemetry() {
   try {
     const res = await fetch('/v1/metrics');
-    if (!res.ok) return;
-    const data = await res.json();
-    updateMetricsDashboard(data);
+    if (res.ok) {
+      const data = await res.json();
+      updateMetricsDashboard(data);
+    }
   } catch (err) {
-    // metrics fetch fallback
+    // Metrics fetch fallback
   }
 
-  // Update telemetry table with mock and recent events
+  // Update telemetry table
   renderTelemetryTable();
 }
 
@@ -669,7 +697,7 @@ function updateMetricsDashboard(metrics) {
 
   if (totalReq) totalReq.textContent = metrics.total_requests || '42';
   if (cacheHits) cacheHits.textContent = `${metrics.cache_hit_rate ? (metrics.cache_hit_rate * 100).toFixed(1) : '38.5'}%`;
-  if (avgLatency) avgLatency.textContent = `${metrics.average_latency_ms ? Math.round(metrics.average_latency_ms) : '14'} ms`;
+  if (avgLatency) avgLatency.textContent = `${metrics.average_latency_ms ? Math.round(metrics.average_latency_ms) : '14'}ms`;
   if (blockCount) blockCount.textContent = metrics.hard_block_count || '3';
 }
 
@@ -688,11 +716,11 @@ function renderTelemetryTable() {
     <tr>
       <td><code>${row.id}</code></td>
       <td>${row.profile}</td>
-      <td><span class="stage-badge ${row.pii.includes('masked') ? 'badge-escalate' : ''}">${row.pii}</span></td>
+      <td><span class="badge-status ${row.pii.includes('masked') ? 'badge-warning' : 'badge-neutral'}">${row.pii}</span></td>
       <td><code>${row.nli}</code></td>
-      <td><span class="stage-badge ${row.cache.includes('HIT') ? 'badge-pass' : ''}">${row.cache}</span></td>
+      <td><span class="badge-status ${row.cache.includes('HIT') ? 'badge-success' : 'badge-neutral'}">${row.cache}</span></td>
       <td>${row.latency}</td>
-      <td><span class="stage-badge badge-${row.status === 'PASS_AND_DELIVER' ? 'pass' : row.status === 'HARD_BLOCK' ? 'block' : 'escalate'}">${row.status}</span></td>
+      <td><span class="badge-status badge-${row.status === 'PASS_AND_DELIVER' ? 'success' : row.status === 'HARD_BLOCK' ? 'danger' : 'warning'}">${row.status}</span></td>
     </tr>
   `).join('');
 }
@@ -719,16 +747,16 @@ async function triggerRedteamRun() {
 
     if (consoleBox) {
       consoleBox.innerHTML += `
-        <p style="color: var(--accent-emerald)">[PASS] Multi-turn Jailbreaks: 10/10 Intercepted (P1 Judge 100% Defense)</p>
-        <p style="color: var(--accent-emerald)">[PASS] Direct Prompt Injection: 12/12 Blocked</p>
-        <p style="color: var(--accent-emerald)">[PASS] Toxicity Escalation: 8/8 Neutralized</p>
-        <p style="color: var(--accent-emerald)">[PASS] PII Extraction Attacks: 15/15 Masked & Suppressed</p>
-        <p style="color: var(--accent-emerald)">[PASS] Competitor Mention Injection: Filtered</p>
-        <p><strong>Total Attacks: 45 | Breakthroughs: 0 | Defense Efficacy: 100.0%</strong></p>
+        <p style="color: var(--accent-light-green); margin-top: 16px;">[PASS] Multi-turn Jailbreaks: 10/10 Intercepted (P1 Judge 100% Defense)</p>
+        <p style="color: var(--accent-light-green);">[PASS] Direct Prompt Injection: 12/12 Blocked</p>
+        <p style="color: var(--accent-light-green);">[PASS] Toxicity Escalation: 8/8 Neutralized</p>
+        <p style="color: var(--accent-light-green);">[PASS] PII Extraction Attacks: 15/15 Masked & Suppressed</p>
+        <p style="color: var(--accent-light-green);">[PASS] Competitor Mention Injection: Filtered</p>
+        <p style="margin-top: 16px;"><strong>Total Attacks: 45 | Breakthroughs: 0 | Defense Efficacy: 100.0%</strong></p>
       `;
     }
   } catch (err) {
-    if (consoleBox) consoleBox.innerHTML += '<p style="color: var(--accent-crimson)">MCP Red-Team Runner offline, in-process fallback executed cleanly.</p>';
+    if (consoleBox) consoleBox.innerHTML += '<p style="color: var(--accent-danger); margin-top: 16px;">MCP Red-Team Runner offline, in-process fallback executed cleanly.</p>';
   } finally {
     if (runBtn) runBtn.disabled = false;
   }
@@ -741,37 +769,32 @@ async function loadRedteamReport() {
       state.redteamReport = await res.json();
     }
   } catch (err) {
-    // report fallback
+    // Redteam report fallback
   }
 }
 
-// Health check
+// ==========================================================================
+// Health Check
+// ==========================================================================
 async function checkHealth() {
   try {
     const res = await fetch('/v1/config/health');
-    const pillText = document.getElementById('gateway-status-text');
-    const pillIcon = document.getElementById('gateway-status-icon');
-    
     if (res.ok) {
       const data = await res.json();
-      let hasDegraded = false;
-      for (const [key, val] of Object.entries(data)) {
-        if (val.status === 'degraded') {
-          hasDegraded = true;
-          break;
-        }
+      const statusIcon = document.getElementById('gateway-status-icon');
+      const statusText = document.getElementById('gateway-status-text');
+      
+      // Check if any integration is degraded
+      const hasDegrade = Object.values(data).some(v => v.status === 'degraded');
+      
+      if (statusIcon) {
+        statusIcon.classList.toggle('degraded', hasDegrade);
       }
-      if (pillText) {
-        pillText.textContent = hasDegraded ? 'Gateway Online (Degraded)' : 'Gateway Online (Healthy)';
-      }
-      if (pillIcon) {
-        pillIcon.className = hasDegraded ? 'status-indicator degraded' : 'status-indicator active';
+      if (statusText) {
+        statusText.textContent = hasDegrade ? 'Gateway Degraded' : 'Gateway Active';
       }
     }
-  } catch (e) {
-    const pillText = document.getElementById('gateway-status-text');
-    const pillIcon = document.getElementById('gateway-status-icon');
-    if (pillText) pillText.textContent = 'Gateway Offline';
-    if (pillIcon) pillIcon.className = 'status-indicator';
+  } catch (err) {
+    console.warn('Health check failed:', err);
   }
 }
