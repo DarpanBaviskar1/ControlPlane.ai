@@ -3,482 +3,633 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ControlPlane.ai — Enterprise AI Proxy Gateway</title>
+  <title>ControlPlane.ai — Enterprise AI Gateway</title>
+  
+  <!-- Fonts: Inter for body/UI, JetBrains Mono for code -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+  
+  <!-- Main App Container -->
   <div class="app-container">
     
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-      <div class="brand-section">
+    <!-- ===================================================================
+         Navigation Bar (Dark Canvas — Revolut nav-bar component)
+         =================================================================== -->
+    <nav class="nav-bar">
+      <div class="brand-group">
         <div class="brand-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
         </div>
-        <div>
+        <div class="brand-text">
           <div class="brand-title">ControlPlane.ai</div>
-          <span class="brand-badge">Gateway v0.1</span>
+          <div class="brand-badge">Enterprise Gateway</div>
         </div>
       </div>
 
-      <nav class="nav-menu">
-        <a class="nav-item active" data-tab="playground" href="#playground">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-          Interactive Studio
+      <div class="nav-menu">
+        <a href="#playground" class="nav-pill active" data-tab="playground">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          Playground
         </a>
-        <a class="nav-item" data-tab="policy" href="#policy">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Policy Studio
+        <a href="#policy" class="nav-pill" data-tab="policy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          Policies
         </a>
-        <a class="nav-item" data-tab="telemetry" href="#telemetry">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          Live Telemetry
+        <a href="#telemetry" class="nav-pill" data-tab="telemetry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          Telemetry
         </a>
-        <a class="nav-item" data-tab="redteam" href="#redteam">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          Red-Team Hub
+        <a href="#redteam" class="nav-pill" data-tab="redteam">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          Redteam
         </a>
-      </nav>
+      </div>
 
-      <div class="sidebar-footer">
-        <div class="gateway-status-pill">
-          <div class="status-indicator active" id="gateway-status-icon"></div>
-          <span id="gateway-status-text" style="color: var(--text-secondary); font-weight: 500;">Gateway Online</span>
+      <div class="header-actions">
+        <div class="status-badge">
+          <div class="status-indicator" id="gateway-status-icon"></div>
+          <span id="gateway-status-text">Gateway Active</span>
         </div>
       </div>
-    </aside>
+    </nav>
 
-    <!-- Main Content -->
+    <!-- ===================================================================
+         Main Content Wrapper
+         =================================================================== -->
     <main class="main-wrapper">
-      
-      <!-- Top Header -->
-      <header class="top-header">
-        <div class="header-title-group">
-          <h1>Enterprise AI Proxy Gateway</h1>
-          <p>Deterministic 5-Stage Safety Pipeline & Routing</p>
-        </div>
 
-        <div class="header-actions">
-          <div class="profile-selector-group">
-            <label for="profile-select">Active Profile</label>
-            <select id="profile-select" class="profile-select">
-              <option value="customer_chatbot">CUSTOMER CHATBOT</option>
-              <option value="internal_copilot">INTERNAL COPILOT</option>
-            </select>
+      <!-- ===================================================================
+           TAB 1: Interactive Playground
+           Two-mode canvas: Dark hero → Light catalogue → Dark feature
+           =================================================================== -->
+      <div id="tab-playground" class="tab-pane active">
+        
+        <!-- Hero Band (DARK storytelling canvas) -->
+        <section class="hero-band">
+          <div class="hero-content">
+            <h1 class="hero-title">Enterprise AI Gateway</h1>
+            <p class="hero-subtitle">Five-stage safety pipeline with real-time groundedness verification, PII masking, and adversarial defense — deployed between your applications and any LLM provider.</p>
+            <div class="hero-actions">
+              <select id="profile-select" class="select" style="max-width: 280px;">
+                <option value="customer_chatbot">Customer Chatbot Profile</option>
+                <option value="internal_copilot">Internal Copilot Profile</option>
+              </select>
+            </div>
           </div>
-        </div>
-      </header>
+        </section>
 
-      <!-- Views Container -->
-      <div class="view-container">
-
-        <!-- ===================================================================
-             TAB 1: Interactive Studio & Playground
-             =================================================================== -->
-        <section id="tab-playground" class="tab-pane active">
-          
-          <!-- Presets -->
-          <div class="presets-bar" id="presets-container"></div>
-
-          <!-- Prompt & Output Grid -->
-          <div class="playground-grid">
+        <!-- Presets Section (LIGHT catalogue canvas) -->
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="section-header">
+              <h2 class="section-title">Test Scenarios</h2>
+              <p class="section-subtitle">Pre-configured prompts demonstrating each safety layer</p>
+            </div>
             
-            <!-- Left: Prompt Editor -->
-            <div class="glass-card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                  Request Input
-                </div>
-                <div class="mode-toggle-group">
-                  <button type="button" class="mode-btn active" id="mode-standard">POST /v1/chat</button>
-                  <button type="button" class="mode-btn" id="mode-stream">SSE Stream</button>
-                </div>
-              </div>
-
-              <div class="prompt-box">
-                <textarea id="prompt-input" class="prompt-textarea" placeholder="Type a user prompt or select a preset scenario above..."></textarea>
-              </div>
-
-              <div class="prompt-toolbar">
-                <span style="font-size: 0.75rem; color: var(--text-muted);">P1 Toxicity &bull; P2 PII/GLiNER &bull; P3 Ambiguity</span>
-                <button type="button" class="btn-primary" id="btn-execute">
-                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                  Run Pipeline
-                </button>
-              </div>
+            <div class="tab-nav" id="presets-container">
+              <!-- Presets injected by JS -->
             </div>
-
-            <!-- Right: Response & Streaming Terminal -->
-            <div class="glass-card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                  Gateway Output Delivery
-                </div>
-              </div>
-
-              <!-- Standard Output -->
-              <div id="standard-output-panel">
-                <div class="code-viewer-box" id="standard-response-content" style="min-height: 180px;">
-                  [Ready. Click 'Run Pipeline' or pick a scenario above]
-                </div>
-              </div>
-
-              <!-- Streaming SSE Terminal -->
-              <div id="streaming-terminal-panel" style="display: none;">
-                <div class="streaming-terminal" id="streaming-terminal-body">
-                  <div class="stream-frame">[SSE STREAM READY]</div>
-                </div>
-              </div>
-            </div>
-
           </div>
+        </section>
 
-          <!-- 5-Stage Flowchart Visualizer -->
-          <div class="pipeline-flow-container">
-            <div class="pipeline-header">
-              <div class="card-title">
-                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                Deterministic 5-Stage Safety Pipeline
+        <!-- Playground Grid (LIGHT catalogue canvas) -->
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="grid-2">
+              
+              <!-- Left: Prompt Editor -->
+              <div class="feature-card-light">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Request Prompt
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <button type="button" class="button-pill-sm active" id="mode-standard">/v1/chat</button>
+                    <button type="button" class="button-pill-sm" id="mode-stream">SSE Stream</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <textarea id="prompt-input" class="textarea" placeholder="Type a user prompt or select a preset scenario above..." style="min-height: 160px;"></textarea>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-size: 13px; color: var(--stone);">P1 · P2 · P3 · NLI · Triage</span>
+                  <button type="button" class="button-primary" id="btn-execute">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Execute
+                  </button>
+                </div>
               </div>
-              <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">Phase 3 Engine Active</span>
+
+              <!-- Right: Response Output -->
+              <div class="feature-card-light">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="4 17 10 11 4 5"></polyline>
+                      <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                    Response
+                  </div>
+                </div>
+
+                <!-- Standard Output -->
+                <div id="standard-output-panel">
+                  <div class="code-viewer" id="standard-response-content" style="min-height: 200px;">
+Ready. Execute a request to see the gateway response.
+                  </div>
+                </div>
+
+                <!-- Streaming Terminal -->
+                <div id="streaming-terminal-panel" style="display: none;">
+                  <div class="stream-terminal" id="streaming-terminal-body">
+                    <div class="stream-frame">[SSE STREAM READY]</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- Pipeline Visualizer (DARK storytelling canvas) -->
+        <section class="section-band dark">
+          <div class="section-content">
+            <div class="section-header">
+              <h2 class="section-title">Pipeline Execution Flow</h2>
+              <p class="section-subtitle">Real-time visibility into the 5-stage safety pipeline</p>
             </div>
 
-            <div class="pipeline-stages-grid">
+            <div class="pipeline-stages">
               
               <!-- Stage 0: Semantic Cache -->
-              <div class="stage-node idle" id="stage-0">
-                <div class="stage-top">
+              <div class="stage-card idle" id="stage-0">
+                <div class="stage-header">
                   <span class="stage-num">Stage 0</span>
-                  <span class="stage-badge badge">READY</span>
+                  <span class="badge-status badge-neutral stage-badge">READY</span>
                 </div>
                 <div class="stage-name">Semantic Cache</div>
-                <div class="stage-metrics">Waiting for query...</div>
+                <div class="stage-metrics">Vector similarity scan</div>
               </div>
 
               <!-- Stage 1: Micro-Judges -->
-              <div class="stage-node idle" id="stage-1">
-                <div class="stage-top">
+              <div class="stage-card idle" id="stage-1">
+                <div class="stage-header">
                   <span class="stage-num">Stage 1</span>
-                  <span class="stage-badge badge">READY</span>
+                  <span class="badge-status badge-neutral stage-badge">READY</span>
                 </div>
-                <div class="stage-name">Micro-Judges (P1/P2/P3)</div>
-                <div class="stage-metrics">Toxicity, PII, Ambiguity</div>
+                <div class="stage-name">Micro-Judges</div>
+                <div class="stage-metrics">P1 · P2 · P3</div>
               </div>
 
               <!-- Stage 2: Model Router -->
-              <div class="stage-node idle" id="stage-2">
-                <div class="stage-top">
+              <div class="stage-card idle" id="stage-2">
+                <div class="stage-header">
                   <span class="stage-num">Stage 2</span>
-                  <span class="stage-badge badge">READY</span>
+                  <span class="badge-status badge-neutral stage-badge">READY</span>
                 </div>
                 <div class="stage-name">Model Router</div>
-                <div class="stage-metrics">RouteLLM & Portkey</div>
+                <div class="stage-metrics">Complexity routing</div>
               </div>
 
-              <!-- Stage 3: Groundedness & NLI -->
-              <div class="stage-node idle" id="stage-3">
-                <div class="stage-top">
+              <!-- Stage 3: Groundedness -->
+              <div class="stage-card idle" id="stage-3">
+                <div class="stage-header">
                   <span class="stage-num">Stage 3</span>
-                  <span class="stage-badge badge">READY</span>
+                  <span class="badge-status badge-neutral stage-badge">READY</span>
                 </div>
-                <div class="stage-name">Groundedness & NLI</div>
-                <div class="stage-metrics">FAISS & DeBERTa NLI</div>
+                <div class="stage-name">Groundedness</div>
+                <div class="stage-metrics">NLI cross-encoder</div>
               </div>
 
-              <!-- Stage 4: Triage Gateway -->
-              <div class="stage-node idle" id="stage-4">
-                <div class="stage-top">
+              <!-- Stage 4: Triage -->
+              <div class="stage-card idle" id="stage-4">
+                <div class="stage-header">
                   <span class="stage-num">Stage 4</span>
-                  <span class="stage-badge badge">READY</span>
+                  <span class="badge-status badge-neutral stage-badge">READY</span>
                 </div>
-                <div class="stage-name">Action Triage</div>
-                <div class="stage-metrics">Priority 0-4 Decision</div>
+                <div class="stage-name">Triage Gateway</div>
+                <div class="stage-metrics">Decision matrix</div>
               </div>
 
-            </div>
-          </div>
-
-          <!-- Data Flow & Redaction Inspector -->
-          <div class="glass-card">
-            <div class="transform-tabs-header">
-              <button type="button" class="transform-tab-btn active" data-view="raw">1. Raw User Prompt</button>
-              <button type="button" class="transform-tab-btn" data-view="masked">2. Masked Prompt sent to LLM</button>
-              <button type="button" class="transform-tab-btn" data-view="raw-llm">3. Raw LLM Output</button>
-              <button type="button" class="transform-tab-btn" data-view="final">4. Restored Final Output</button>
-            </div>
-
-            <div class="transform-view-pane" id="view-raw">
-              <div class="code-viewer-box" id="raw-prompt-view">No prompt submitted yet.</div>
-            </div>
-            <div class="transform-view-pane" id="view-masked" style="display: none;">
-              <div class="code-viewer-box" id="masked-prompt-view">No prompt submitted yet.</div>
-            </div>
-            <div class="transform-view-pane" id="view-raw-llm" style="display: none;">
-              <div class="code-viewer-box" id="raw-llm-view">No prompt submitted yet.</div>
-            </div>
-            <div class="transform-view-pane" id="view-final" style="display: none;">
-              <div class="code-viewer-box" id="final-response-view">No prompt submitted yet.</div>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- ===================================================================
-             TAB 2: Policy Configuration Studio
-             =================================================================== -->
-        <section id="tab-policy" class="tab-pane">
-          <div class="policy-grid">
-            
-            <!-- Left: Policy Editor Controls -->
-            <div class="glass-card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                  Profile Configuration
-                </div>
-                <select id="policy-profile-selector" class="profile-select" style="background: var(--bg-primary); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-subtle);">
-                  <option value="customer_chatbot">customer_chatbot</option>
-                  <option value="internal_copilot">internal_copilot</option>
-                </select>
-              </div>
-
-              <!-- Cache Toggle & Sliders -->
-              <div class="toggle-switch">
-                <div>
-                  <strong>Semantic Cache</strong>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Vector cache exact & fuzzy query responses</div>
-                </div>
-                <input type="checkbox" id="policy-cache-enabled" checked>
-              </div>
-
-              <div class="form-group" style="margin-top: 14px;">
-                <label>Cache TTL (seconds)</label>
-                <div class="range-slider-group">
-                  <input type="range" id="policy-cache-ttl" class="range-slider" min="30" max="3600" step="30" value="300">
-                  <span class="range-val-badge" id="badge-cache-ttl">300s</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label>Cache Similarity Threshold</label>
-                <div class="range-slider-group">
-                  <input type="range" id="policy-cache-sim" class="range-slider" min="0.50" max="0.99" step="0.01" value="0.92">
-                  <span class="range-val-badge" id="badge-cache-sim">0.92</span>
-                </div>
-              </div>
-
-              <!-- Groundedness & Complexity -->
-              <div class="form-group">
-                <label>Groundedness Pass Threshold</label>
-                <div class="range-slider-group">
-                  <input type="range" id="policy-groundedness" class="range-slider" min="0.50" max="0.99" step="0.01" value="0.85">
-                  <span class="range-val-badge" id="badge-groundedness">0.85</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label>RouteLLM Complexity Threshold (SLM vs Frontier)</label>
-                <div class="range-slider-group">
-                  <input type="range" id="policy-complexity" class="range-slider" min="0.10" max="0.90" step="0.05" value="0.50">
-                  <span class="range-val-badge" id="badge-complexity">0.50</span>
-                </div>
-              </div>
-
-              <!-- GLiNER Custom Terms -->
-              <div class="form-group">
-                <label>GLiNER Custom Entity Terms (Press Enter)</label>
-                <div class="tag-input-container" id="custom-entity-tags">
-                  <input type="text" class="tag-text-input" id="custom-entity-tag-input" placeholder="Add corporate term...">
-                </div>
-              </div>
-
-              <!-- Escalation & Oversight -->
-              <div class="toggle-switch">
-                <div>
-                  <strong>Human Escalation</strong>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Route uncertain answers to operator queue</div>
-                </div>
-                <input type="checkbox" id="policy-human-escalation" checked>
-              </div>
-
-              <div class="toggle-switch">
-                <div>
-                  <strong>Worldsense Multi-Turn Oversight</strong>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Detect long-horizon escalation chains</div>
-                </div>
-                <input type="checkbox" id="policy-agentic-oversight" checked>
-              </div>
-
-              <button type="button" class="btn-primary" id="btn-save-policy" style="width: 100%; margin-top: 20px; justify-content: center;">
-                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                Save Policy & Trigger Hot-Reload
-              </button>
-            </div>
-
-            <!-- Right: Live Policy JSON / YAML Preview -->
-            <div class="glass-card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                  Live Policy Definition
-                </div>
-              </div>
-              <div class="code-viewer-box" id="policy-yaml-preview" style="min-height: 440px;">
-                Loading policy definition...
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        <!-- ===================================================================
-             TAB 3: Live Telemetry & Audit Stream
-             =================================================================== -->
-        <section id="tab-telemetry" class="tab-pane">
-          
-          <!-- Metrics Overview Cards -->
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
-            <div class="glass-card" style="padding: 16px;">
-              <div style="font-size: 0.75rem; color: var(--text-secondary);">Total Requests</div>
-              <div style="font-size: 1.6rem; font-weight: 600; color: #fff; margin-top: 4px;" id="metric-total-requests">42</div>
-            </div>
-            <div class="glass-card" style="padding: 16px;">
-              <div style="font-size: 0.75rem; color: var(--text-secondary);">Cache Hit Ratio</div>
-              <div style="font-size: 1.6rem; font-weight: 600; color: var(--accent-primary); margin-top: 4px;" id="metric-cache-hits">38.5%</div>
-            </div>
-            <div class="glass-card" style="padding: 16px;">
-              <div style="font-size: 0.75rem; color: var(--text-secondary);">Average Latency</div>
-              <div style="font-size: 1.6rem; font-weight: 600; color: var(--accent-emerald); margin-top: 4px;" id="metric-avg-latency">14 ms</div>
-            </div>
-            <div class="glass-card" style="padding: 16px;">
-              <div style="font-size: 0.75rem; color: var(--text-secondary);">Threats Blocked</div>
-              <div style="font-size: 1.6rem; font-weight: 600; color: var(--accent-crimson); margin-top: 4px;" id="metric-blocked-count">3</div>
-            </div>
-          </div>
-
-          <!-- Telemetry Table -->
-          <div class="glass-card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                Live Gateway Audit Trail
-              </div>
-              <button type="button" class="preset-chip" onclick="refreshTelemetry()">
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                Refresh
-              </button>
-            </div>
-
-            <div class="telemetry-table-wrapper">
-              <table class="telemetry-table">
-                <thead>
-                  <tr>
-                    <th>Request ID</th>
-                    <th>Profile</th>
-                    <th>PII Scanned</th>
-                    <th>NLI Label</th>
-                    <th>Cache Hit</th>
-                    <th>Latency</th>
-                    <th>Triage Outcome</th>
-                  </tr>
-                </thead>
-                <tbody id="telemetry-table-body">
-                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading telemetry stream...</td></tr>
-                </tbody>
-              </table>
             </div>
           </div>
         </section>
 
-        <!-- ===================================================================
-             TAB 4: Red-Team Security Hub
-             =================================================================== -->
-        <section id="tab-redteam" class="tab-pane">
-          <div class="redteam-grid">
-            
-            <!-- Left: Attack Matrix -->
-            <div class="glass-card">
+        <!-- Data Transformation Inspector (LIGHT catalogue canvas) -->
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="feature-card-light">
               <div class="card-header">
                 <div class="card-title">
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                  Adversarial Attack Matrix
-                </div>
-                <span class="stage-badge badge-pass">MCP Server: Port 9200</span>
-              </div>
-
-              <div class="attack-category-card">
-                <div class="attack-info">
-                  <h4>1. Multi-Turn Jailbreak Suite</h4>
-                  <p>DAN modes, persona hijacking, filter evasion</p>
-                </div>
-                <span class="stage-badge badge-pass">100% Blocked</span>
-              </div>
-
-              <div class="attack-category-card">
-                <div class="attack-info">
-                  <h4>2. Direct Prompt Injection</h4>
-                  <p>Instruction overrides, system prompt exfiltration</p>
-                </div>
-                <span class="stage-badge badge-pass">100% Blocked</span>
-              </div>
-
-              <div class="attack-category-card">
-                <div class="attack-info">
-                  <h4>3. Toxicity Escalation Probes</h4>
-                  <p>Gradual multi-turn hate speech & harm escalation</p>
-                </div>
-                <span class="stage-badge badge-pass">100% Blocked</span>
-              </div>
-
-              <div class="attack-category-card">
-                <div class="attack-info">
-                  <h4>4. PII Extraction Attacks</h4>
-                  <p>Probing LLM memory for user SSNs & corporate secrets</p>
-                </div>
-                <span class="stage-badge badge-pass">100% Masked</span>
-              </div>
-
-              <div class="attack-category-card">
-                <div class="attack-info">
-                  <h4>5. Competitor Mention Injection</h4>
-                  <p>Unauthorized corporate promotion suppression</p>
-                </div>
-                <span class="stage-badge badge-pass">100% Filtered</span>
-              </div>
-
-              <button type="button" class="btn-danger" id="btn-run-redteam" style="width: 100%; margin-top: 12px; justify-content: center;">
-                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                Launch Automated Adversarial Probe Suite
-              </button>
-            </div>
-
-            <!-- Right: Red-Team Console Logs -->
-            <div class="glass-card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                  Redteam Execution Log
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                  </svg>
+                  Data Flow Inspector
                 </div>
               </div>
-              <div class="code-viewer-box" id="redteam-console" style="min-height: 380px; color: var(--accent-primary);">
-                <p>System ready. Click 'Launch Automated Adversarial Probe Suite' to evaluate gateway resilience across all 5 threat vectors.</p>
+
+              <div class="tab-nav">
+                <button type="button" class="button-pill-sm active transform-tab-btn" data-view="raw">1. Raw Prompt</button>
+                <button type="button" class="button-pill-sm transform-tab-btn" data-view="masked">2. Masked Prompt</button>
+                <button type="button" class="button-pill-sm transform-tab-btn" data-view="raw-llm">3. Raw LLM Output</button>
+                <button type="button" class="button-pill-sm transform-tab-btn" data-view="final">4. Final Response</button>
+              </div>
+
+              <div class="transform-view-pane" id="view-raw">
+                <div class="code-viewer" id="raw-prompt-view">No prompt submitted yet.</div>
+              </div>
+              <div class="transform-view-pane" id="view-masked" style="display: none;">
+                <div class="code-viewer" id="masked-prompt-view">No prompt submitted yet.</div>
+              </div>
+              <div class="transform-view-pane" id="view-raw-llm" style="display: none;">
+                <div class="code-viewer" id="raw-llm-view">No prompt submitted yet.</div>
+              </div>
+              <div class="transform-view-pane" id="view-final" style="display: none;">
+                <div class="code-viewer" id="final-response-view">No prompt submitted yet.</div>
               </div>
             </div>
-
           </div>
         </section>
 
       </div>
+
+      <!-- ===================================================================
+           TAB 2: Policy Configuration Studio
+           Light catalogue canvas with form controls
+           =================================================================== -->
+      <div id="tab-policy" class="tab-pane">
+        
+        <section class="hero-band">
+          <div class="hero-content">
+            <h1 class="hero-title" style="font-size: 48px; letter-spacing: -0.48px;">Policy Configuration</h1>
+            <p class="hero-subtitle">Configure safety thresholds, caching behavior, and pipeline parameters per use-case profile.</p>
+          </div>
+        </section>
+
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="grid-2">
+              
+              <!-- Left: Policy Editor -->
+              <div class="feature-card-light">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    Configuration
+                  </div>
+                  <select id="policy-profile-selector" class="select" style="max-width: 200px;">
+                    <option value="customer_chatbot">customer_chatbot</option>
+                    <option value="internal_copilot">internal_copilot</option>
+                  </select>
+                </div>
+
+                <!-- Semantic Cache Toggle -->
+                <div class="toggle-group">
+                  <div>
+                    <div class="toggle-label">Semantic Cache</div>
+                    <div class="toggle-description">Vector-based cache for exact and fuzzy query matches</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="policy-cache-enabled" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <!-- Cache TTL -->
+                <div class="form-group">
+                  <label class="form-label">Cache TTL (seconds)</label>
+                  <div class="range-group">
+                    <input type="range" id="policy-cache-ttl" class="range-slider" min="30" max="3600" step="30" value="300">
+                    <span class="range-value" id="badge-cache-ttl">300s</span>
+                  </div>
+                </div>
+
+                <!-- Cache Similarity -->
+                <div class="form-group">
+                  <label class="form-label">Cache Similarity Threshold</label>
+                  <div class="range-group">
+                    <input type="range" id="policy-cache-sim" class="range-slider" min="0.50" max="0.99" step="0.01" value="0.92">
+                    <span class="range-value" id="badge-cache-sim">0.92</span>
+                  </div>
+                </div>
+
+                <!-- Groundedness -->
+                <div class="form-group">
+                  <label class="form-label">Groundedness Pass Threshold</label>
+                  <div class="range-group">
+                    <input type="range" id="policy-groundedness" class="range-slider" min="0.50" max="0.99" step="0.01" value="0.85">
+                    <span class="range-value" id="badge-groundedness">0.85</span>
+                  </div>
+                </div>
+
+                <!-- Complexity -->
+                <div class="form-group">
+                  <label class="form-label">Complexity Threshold (SLM vs Frontier)</label>
+                  <div class="range-group">
+                    <input type="range" id="policy-complexity" class="range-slider" min="0.10" max="0.90" step="0.05" value="0.50">
+                    <span class="range-value" id="badge-complexity">0.50</span>
+                  </div>
+                </div>
+
+                <!-- Custom Entity Terms -->
+                <div class="form-group">
+                  <label class="form-label">GLiNER Custom Entity Terms</label>
+                  <div class="tag-input-container" id="custom-entity-tags">
+                    <input type="text" class="tag-input" id="custom-entity-tag-input" placeholder="Add term...">
+                  </div>
+                </div>
+
+                <!-- Human Escalation -->
+                <div class="toggle-group">
+                  <div>
+                    <div class="toggle-label">Human Escalation</div>
+                    <div class="toggle-description">Route uncertain answers to operator queue</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="policy-human-escalation" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <!-- Agentic Oversight -->
+                <div class="toggle-group" style="border-bottom: none;">
+                  <div>
+                    <div class="toggle-label">Worldsense Oversight</div>
+                    <div class="toggle-description">Multi-turn agentic consequence detection</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="policy-agentic-oversight" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <button type="button" class="button-primary w-full" id="btn-save-policy" style="margin-top: 32px; justify-content: center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  Save Policy
+                </button>
+              </div>
+
+              <!-- Right: JSON Preview -->
+              <div class="feature-card-light">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="16 18 22 12 16 6"></polyline>
+                      <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                    Policy JSON
+                  </div>
+                </div>
+                <div class="code-viewer" id="policy-yaml-preview" style="min-height: 600px;">
+Loading policy configuration...
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ===================================================================
+           TAB 3: Telemetry & Observability
+           Dark hero → Light metrics → Dark table
+           =================================================================== -->
+      <div id="tab-telemetry" class="tab-pane">
+        
+        <section class="hero-band">
+          <div class="hero-content">
+            <h1 class="hero-title" style="font-size: 48px; letter-spacing: -0.48px;">Request Telemetry</h1>
+            <p class="hero-subtitle">Real-time observability into pipeline execution, cache performance, and safety verdicts.</p>
+          </div>
+        </section>
+
+        <!-- Metrics Cards (LIGHT catalogue canvas) -->
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="grid-4">
+              <div class="metric-card-light">
+                <div class="metric-label">Total Requests</div>
+                <div class="metric-value" id="metric-total-requests">42</div>
+              </div>
+              <div class="metric-card-light">
+                <div class="metric-label">Cache Hit Rate</div>
+                <div class="metric-value primary" id="metric-cache-hits">38.5%</div>
+              </div>
+              <div class="metric-card-light">
+                <div class="metric-label">Avg Latency</div>
+                <div class="metric-value success" id="metric-avg-latency">14ms</div>
+              </div>
+              <div class="metric-card-light">
+                <div class="metric-label">Blocked</div>
+                <div class="metric-value danger" id="metric-blocked-count">3</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Audit Trail Table (LIGHT catalogue canvas) -->
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="feature-card-light">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                  Request Audit Trail
+                </div>
+                <button type="button" class="button-pill-sm" onclick="refreshTelemetry()">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+
+              <div style="overflow-x: auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Request ID</th>
+                      <th>Profile</th>
+                      <th>PII Scanned</th>
+                      <th>NLI Label</th>
+                      <th>Cache</th>
+                      <th>Latency</th>
+                      <th>Triage</th>
+                    </tr>
+                  </thead>
+                  <tbody id="telemetry-table-body">
+                    <tr>
+                      <td colspan="7" style="text-align: center; color: var(--stone);">Loading telemetry stream...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ===================================================================
+           TAB 4: Red Team Security Hub
+           Dark hero → Light attack cards
+           =================================================================== -->
+      <div id="tab-redteam" class="tab-pane">
+        
+        <section class="hero-band">
+          <div class="hero-content">
+            <h1 class="hero-title" style="font-size: 48px; letter-spacing: -0.48px;">Adversarial Testing</h1>
+            <p class="hero-subtitle">Continuous red-team evaluation across jailbreak attempts, prompt injection, toxicity escalation, and PII extraction attacks.</p>
+          </div>
+        </section>
+
+        <section class="section-band light">
+          <div class="section-content">
+            <div class="grid-2">
+              
+              <!-- Left: Attack Vectors -->
+              <div class="feature-card-light">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Attack Categories
+                  </div>
+                  <span class="badge-feature">MCP :9200</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <div class="plan-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                      <div>
+                        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Multi-Turn Jailbreak</h4>
+                        <p style="font-size: 13px; color: var(--stone); line-height: 1.5;">DAN modes, persona hijacking, filter evasion chains</p>
+                      </div>
+                      <span class="badge-status badge-success">100%</span>
+                    </div>
+                  </div>
+
+                  <div class="plan-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                      <div>
+                        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Prompt Injection</h4>
+                        <p style="font-size: 13px; color: var(--stone); line-height: 1.5;">Instruction overrides, system prompt exfiltration</p>
+                      </div>
+                      <span class="badge-status badge-success">100%</span>
+                    </div>
+                  </div>
+
+                  <div class="plan-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                      <div>
+                        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Toxicity Escalation</h4>
+                        <p style="font-size: 13px; color: var(--stone); line-height: 1.5;">Gradual multi-turn hate speech & harm escalation</p>
+                      </div>
+                      <span class="badge-status badge-success">100%</span>
+                    </div>
+                  </div>
+
+                  <div class="plan-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                      <div>
+                        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">PII Extraction</h4>
+                        <p style="font-size: 13px; color: var(--stone); line-height: 1.5;">Probing LLM memory for SSNs & corporate secrets</p>
+                      </div>
+                      <span class="badge-status badge-success">100%</span>
+                    </div>
+                  </div>
+
+                  <div class="plan-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                      <div>
+                        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Competitor Injection</h4>
+                        <p style="font-size: 13px; color: var(--stone); line-height: 1.5;">Unauthorized corporate promotion suppression</p>
+                      </div>
+                      <span class="badge-status badge-success">100%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" class="button-danger w-full" id="btn-run-redteam" style="margin-top: 24px; justify-content: center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
+                  Run Adversarial Suite
+                </button>
+              </div>
+
+              <!-- Right: Console Output -->
+              <div class="feature-card-light">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="4 17 10 11 4 5"></polyline>
+                      <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                    Test Results
+                  </div>
+                </div>
+                <div class="code-viewer" id="redteam-console" style="min-height: 500px;">
+<p>Ready. Click 'Run Adversarial Suite' to evaluate gateway defense mechanisms.</p>
+<p style="margin-top: 16px; color: var(--stone);">This suite dispatches 45+ attack prompts across 5 categories via the MCP server at localhost:9200.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+      </div>
+
     </main>
+
   </div>
 
+  <!-- JavaScript -->
   <script src="/static/js/app.js"></script>
 </body>
 </html>
